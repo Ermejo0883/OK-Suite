@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f1117" />
+  <meta name="description" content="OK Suite PDF - Visualizzatore PDF professionale" />
+  <title>OK Suite - PDF</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.ico" sizes="any" />
+  <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="icons/favicon-16.png" type="image/png" sizes="16x16" />
+
+  <!-- iOS / Safari PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OKPdf" />
+  <link rel="apple-touch-icon" href="icons/favicon-180.png" />
+
+  <!-- MS Tiles -->
+  <meta name="msapplication-TileColor" content="#0f1117" />
+  <meta name="msapplication-TileImage" content="icons/icon-192.png" />
+
+  <!-- Google Fonts: DM Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- DevExpress CSS + JS (CDN ufficiale) -->
+  <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/24.2.3/css/dx.dark.compact.css" />
+  <script src="https://cdn3.devexpress.com/jslib/24.2.3/js/dx.all.js"></script>
+
+  <style>
+    /* =====================================================
+       RESET & VARIABILI
+    ===================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0f1117;
+      --surface:      #1a1c26;
+      --surface2:     #22253a;
+      --border:       #2e3150;
+      --accent:       #4f8ef7;
+      --accent-dim:   #3a6fd8;
+      --badge-pdf:    #e53935;
+      --text:         #e8eaf6;
+      --text-dim:     #8892b0;
+      --success:      #43a047;
+      --warning:      #fb8c00;
+      --danger:       #e53935;
+      --radius:       12px;
+      --radius-sm:    8px;
+      --toolbar-h:    60px;
+      --statusbar-h:  52px;
+      --admob-h:      0px;   /* Step 6: diventa 60px */
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* =====================================================
+       LAYOUT
+    ===================================================== */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      position: relative;
+    }
+
+    /* =====================================================
+       TOOLBAR
+    ===================================================== */
+    #toolbar {
+      height: var(--toolbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      flex-shrink: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,.4);
+    }
+
+    .toolbar-brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .brand-icon    { width: 34px; height: 34px; flex-shrink: 0; }
+    .brand-icon svg { width: 100%; height: 100%; }
+
+    .brand-text { display: flex; flex-direction: column; line-height: 1; }
+    .brand-name {
+      font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .3px;
+    }
+    .brand-badge {
+      display: inline-flex; align-items: center;
+      background: var(--badge-pdf); color: #fff;
+      font-size: 9px; font-weight: 700; letter-spacing: .8px;
+      padding: 1px 5px; border-radius: 3px; margin-top: 2px; width: fit-content;
+    }
+
+    .toolbar-title { flex: 1; min-width: 0; padding: 0 8px; }
+    .doc-title {
+      font-size: 13px; font-weight: 500; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .doc-subtitle { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+
+    .toolbar-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+    .btn-icon {
+      width: 38px; height: 38px; border: none; background: transparent;
+      color: var(--text-dim); border-radius: var(--radius-sm);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-icon:hover  { background: var(--surface2); color: var(--text); }
+    .btn-icon:active { background: var(--border); }
+    .btn-icon.primary { color: var(--accent); }
+    .btn-icon.primary:hover { background: rgba(79,142,247,.12); }
+    .btn-icon[disabled] { opacity: .35; cursor: not-allowed; pointer-events: none; }
+    .btn-icon.danger-icon:hover { background: rgba(229,57,53,.15); color: var(--danger); }
+    .btn-icon svg { pointer-events: none; }
+
+    .toolbar-sep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
+
+    /* =====================================================
+       VIEWER AREA
+    ===================================================== */
+    #viewer-area { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
+    #pdf-viewer  { width: 100%; height: 100%; }
+
+    /* =====================================================
+       PLACEHOLDER
+    ===================================================== */
+    #placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 20px;
+      background: var(--bg); z-index: 10; padding: 32px; text-align: center;
+    }
+    #placeholder.hidden { display: none; }
+
+    .placeholder-mascot {
+      width: 108px; height: 108px; opacity: .9;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-10px); }
+    }
+
+    .placeholder-title { font-size: 20px; font-weight: 700; color: var(--text); }
+    .placeholder-sub   {
+      font-size: 14px; color: var(--text-dim); line-height: 1.65; max-width: 280px;
+    }
+
+    .btn-open-main {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--accent); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+      border: none; border-radius: var(--radius); padding: 13px 28px;
+      cursor: pointer; transition: background .15s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 4px 16px rgba(79,142,247,.35);
+    }
+    .btn-open-main:hover  { background: var(--accent-dim); }
+    .btn-open-main:active { transform: scale(.97); }
+
+    .drop-hint { font-size: 12px; color: var(--text-dim); opacity: .7; }
+
+    /* Drag over state */
+    #viewer-area.drag-over #placeholder {
+      background: rgba(79,142,247,.05);
+      outline: 2px dashed var(--accent);
+      outline-offset: -10px;
+    }
+
+    /* =====================================================
+       LOADING OVERLAY
+    ===================================================== */
+    #loading-overlay {
+      position: absolute; inset: 0;
+      background: rgba(15,17,23,.88);
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 16px;
+      z-index: 50; backdrop-filter: blur(4px);
+    }
+    #loading-overlay.hidden { display: none; }
+
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin .75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text { font-size: 14px; color: var(--text-dim); font-weight: 500; }
+
+    /* =====================================================
+       STATUS BAR
+    ===================================================== */
+    #statusbar {
+      height: var(--statusbar-h);
+      background: var(--surface); border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      gap: 12px; flex-shrink: 0; padding: 0 16px;
+      box-shadow: 0 -2px 12px rgba(0,0,0,.3);
+    }
+
+    .btn-nav {
+      width: 36px; height: 36px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: background .15s, border-color .15s;
+      -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+    }
+    .btn-nav:hover:not(:disabled)  { background: var(--border); border-color: var(--accent); }
+    .btn-nav:active:not(:disabled) { background: var(--surface); }
+    .btn-nav:disabled { opacity: .3; cursor: not-allowed; }
+
+    .page-info { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); }
+
+    #page-input {
+      width: 48px; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-family: 'DM Sans', sans-serif;
+      font-size: 13px; font-weight: 600; text-align: center;
+      padding: 5px 4px; border-radius: 6px; outline: none;
+      transition: border-color .15s;
+    }
+    #page-input:focus { border-color: var(--accent); }
+    #page-input::-webkit-inner-spin-button,
+    #page-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .statusbar-sep { width: 1px; height: 20px; background: var(--border); }
+
+    .zoom-indicator {
+      font-size: 12px; font-weight: 500; color: var(--text-dim);
+      min-width: 44px; text-align: center;
+    }
+
+    /* =====================================================
+       ADMOB PLACEHOLDER — Step 6
+    ===================================================== */
+    #admob-banner {
+      height: var(--admob-h);
+      background: var(--surface2); display: none;  /* Step 6: display:flex */
+      align-items: center; justify-content: center;
+      font-size: 11px; color: var(--text-dim);
+      border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+
+    /* =====================================================
+       TOAST
+    ===================================================== */
+    #toast-container {
+      position: fixed;
+      bottom: calc(var(--statusbar-h) + var(--admob-h) + 12px);
+      left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center;
+      gap: 8px; z-index: 200; pointer-events: none;
+    }
+    .toast {
+      background: var(--surface2); color: var(--text);
+      font-size: 13px; font-weight: 500;
+      padding: 10px 18px; border-radius: 20px;
+      border-left: 3px solid var(--accent);
+      box-shadow: 0 4px 20px rgba(0,0,0,.5);
+      opacity: 0; transform: translateY(10px) scale(.97);
+      animation: t-in .25s ease forwards, t-out .3s ease 2.5s forwards;
+      white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+    }
+    .toast.error   { border-left-color: var(--danger); }
+    .toast.success { border-left-color: var(--success); }
+    .toast.warning { border-left-color: var(--warning); }
+    @keyframes t-in  { to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes t-out { to { opacity: 0; transform: translateY(6px) scale(.97); } }
+
+    /* misc */
+    #file-input { display: none; }
+    @media (max-width: 360px) { .brand-text { display: none; } }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+    /* =====================================================
+       PWA INSTALL BANNER
+    ===================================================== */
+    #pwa-banner {
+      position: fixed;
+      bottom: calc(var(--statusbar-h) + var(--admob-h) + 10px);
+      left: 12px; right: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 150;
+      box-shadow: 0 4px 24px rgba(0,0,0,.5);
+      transform: translateY(20px);
+      opacity: 0;
+      animation: banner-in .35s ease .5s forwards;
+    }
+
+    #pwa-banner.hidden { display: none; }
+
+    @keyframes banner-in {
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .pwa-banner-icon {
+      width: 40px; height: 40px; flex-shrink: 0;
+      border-radius: 10px; overflow: hidden;
+      background: var(--bg);
+    }
+    .pwa-banner-icon img { width: 100%; height: 100%; object-fit: contain; }
+
+    .pwa-banner-text { flex: 1; min-width: 0; }
+    .pwa-banner-title {
+      font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.2;
+    }
+    .pwa-banner-sub {
+      font-size: 11px; color: var(--text-dim); margin-top: 2px;
+    }
+
+    .pwa-banner-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    .btn-pwa-install {
+      background: var(--accent); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+      border: none; border-radius: 8px; padding: 7px 14px;
+      cursor: pointer; white-space: nowrap;
+      transition: background .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-pwa-install:hover { background: var(--accent-dim); }
+
+    .btn-pwa-dismiss {
+      width: 30px; height: 30px; border: none;
+      background: transparent; color: var(--text-dim);
+      border-radius: 6px; display: flex; align-items: center;
+      justify-content: center; cursor: pointer;
+      transition: background .15s, color .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-pwa-dismiss:hover { background: var(--border); color: var(--text); }
+
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ================================================
+       TOOLBAR
+  ================================================ -->
+  <header id="toolbar">
+
+    <!-- Brand -->
+    <div class="toolbar-brand">
+      <div class="brand-icon">
+        <img src="icons/mascot.png" alt="OK Suite PDF" style="width:100%;height:100%;object-fit:contain;" />
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">OK Suite</span>
+        <span class="brand-badge">PDF</span>
+      </div>
+    </div>
+
+    <!-- Titolo documento -->
+    <div class="toolbar-title">
+      <div class="doc-title"    id="doc-title">Nessun documento aperto</div>
+      <div class="doc-subtitle" id="doc-subtitle">Apri un file PDF per iniziare</div>
+    </div>
+
+    <!-- Azioni -->
+    <div class="toolbar-actions">
+      <button class="btn-icon primary" id="btn-open"  title="Apri PDF"    aria-label="Apri file PDF">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9"  y1="15" x2="15" y2="15"/>
+        </svg>
+      </button>
+
+      <div class="toolbar-sep"></div>
+
+      <button class="btn-icon" id="btn-print" title="Stampa"    aria-label="Stampa documento"    disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"/>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+      </button>
+
+      <button class="btn-icon" id="btn-share" title="Condividi" aria-label="Condividi documento" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5"  r="3"/>
+          <circle cx="6"  cy="12" r="3"/>
+          <circle cx="18" cy="19" r="3"/>
+          <line x1="8.59"  y1="13.51" x2="15.42" y2="17.49"/>
+          <line x1="15.41" y1="6.51"  x2="8.59"  y2="10.49"/>
+        </svg>
+      </button>
+
+      <div class="toolbar-sep" id="sep-close" style="display:none"></div>
+
+      <button class="btn-icon danger-icon" id="btn-close" title="Chiudi documento" aria-label="Chiudi documento" style="display:none">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6"  x2="6"  y2="18"/>
+          <line x1="6"  y1="6"  x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================================================
+       VISUALIZZATORE
+  ================================================ -->
+  <main id="viewer-area">
+
+    <!-- Contenitore DevExpress dxPdfViewer -->
+    <div id="pdf-viewer"></div>
+
+    <!-- Placeholder stato iniziale -->
+    <div id="placeholder">
+      <!-- Mascotte grande animata -->
+      <img src="icons/mascot.png" alt="OK Suite PDF" class="placeholder-mascot" />
+
+      <h2 class="placeholder-title">Apri un documento PDF</h2>
+      <p class="placeholder-sub">Tocca il pulsante qui sotto oppure trascina un file PDF nell'area del visualizzatore</p>
+
+      <button class="btn-open-main" id="btn-open-main">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9"  y1="15" x2="15" y2="15"/>
+        </svg>
+        <span>Apri file PDF</span>
+      </button>
+
+      <p class="drop-hint">Oppure trascina e rilascia un file PDF qui</p>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="hidden">
+      <div class="spinner"></div>
+      <p class="loading-text" id="loading-text">Caricamento documento…</p>
+    </div>
+
+  </main>
+
+  <!-- ================================================
+       STATUS BAR
+  ================================================ -->
+  <footer id="statusbar">
+    <button class="btn-nav" id="btn-prev" title="Pagina precedente" aria-label="Pagina precedente" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+
+    <div class="page-info">
+      <input type="number" id="page-input" value="1" min="1" aria-label="Numero pagina" disabled />
+      <span style="color:var(--text-dim)">/</span>
+      <span id="total-pages" style="color:var(--text-dim)">—</span>
+    </div>
+
+    <button class="btn-nav" id="btn-next" title="Pagina successiva" aria-label="Pagina successiva" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+
+    <div class="statusbar-sep"></div>
+
+    <!-- Step 2: zoom verrà agganciato al viewer -->
+    <div class="zoom-indicator" id="zoom-indicator">—%</div>
+  </footer>
+
+  <!-- ADMOB PLACEHOLDER — Step 6 (ADS_ENABLED = false) -->
+  <div id="admob-banner">Pubblicità</div>
+
+</div><!-- /app -->
+
+<!-- PWA Install Banner (visibile solo quando beforeinstallprompt è disponibile) -->
+<div id="pwa-banner" class="hidden" role="complementary" aria-label="Installa app">
+  <div class="pwa-banner-icon">
+    <img src="icons/icon-192.png" alt="OK Suite PDF" />
+  </div>
+  <div class="pwa-banner-text">
+    <div class="pwa-banner-title">Installa OK Suite PDF</div>
+    <div class="pwa-banner-sub">Aggiungi alla schermata home, funziona offline</div>
+  </div>
+  <div class="pwa-banner-actions">
+    <button class="btn-pwa-install" id="btn-pwa-install">Installa</button>
+    <button class="btn-pwa-dismiss" id="btn-pwa-dismiss" aria-label="Chiudi">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- Input file nascosto -->
+<input type="file" id="file-input" accept=".pdf,application/pdf" />
+
+
+<!-- ====================================================
+     JAVASCRIPT
+==================================================== -->
+<script>
+'use strict';
+
+/* =====================================================
+   CONFIGURAZIONE GLOBALE
+   ► Modificare qui le flag per attivare/disattivare funzioni
+===================================================== */
+const APP_CONFIG = {
+  ADS_ENABLED: false,   // Step 6: true → mostra banner AdMob
+  IS_PRO:      false,   // Step 7: true dopo acquisto Google Play Billing
+  APP_VERSION: '1.0.0',
+  APP_NAME:    'OK Suite - PDF',
+};
+
+/* =====================================================
+   STATE
+===================================================== */
+const state = {
+  pdfFile:       null,    // File aperto
+  pdfUrl:        null,    // Object URL (blob:)
+  totalPages:    0,
+  currentPage:   1,
+  zoom:          100,
+  viewer:        null,    // Istanza DevExpress dxPdfViewer
+  viewerReady:   false,
+  useDevExpress: true,    // false = fallback <embed>
+};
+
+/* =====================================================
+   DOM REFS
+===================================================== */
+const $ = id => document.getElementById(id);
+const dom = {
+  placeholder:    $('placeholder'),
+  loadingOverlay: $('loading-overlay'),
+  loadingText:    $('loading-text'),
+  pdfViewer:      $('pdf-viewer'),
+  fileInput:      $('file-input'),
+  btnOpen:        $('btn-open'),
+  btnOpenMain:    $('btn-open-main'),
+  btnPrint:       $('btn-print'),
+  btnShare:       $('btn-share'),
+  btnPrev:        $('btn-prev'),
+  btnNext:        $('btn-next'),
+  pageInput:      $('page-input'),
+  totalPages:     $('total-pages'),
+  zoomIndicator:  $('zoom-indicator'),
+  docTitle:       $('doc-title'),
+  docSubtitle:    $('doc-subtitle'),
+  toastContainer: $('toast-container'),
+  viewerArea:     $('viewer-area'),
+  btnClose:       $('btn-close'),
+  sepClose:       $('sep-close'),
+};
+
+/* =====================================================
+   TOAST
+===================================================== */
+function showToast(msg, type = 'info', ms = 3000) {
+  const el = document.createElement('div');
+  el.className   = `toast ${type}`;
+  el.textContent = msg;
+  dom.toastContainer.appendChild(el);
+  setTimeout(() => el.remove(), ms + 400);
+}
+
+/* =====================================================
+   LOADING
+===================================================== */
+function showLoading(text = 'Caricamento documento…') {
+  dom.loadingText.textContent = text;
+  dom.loadingOverlay.classList.remove('hidden');
+}
+function hideLoading() {
+  dom.loadingOverlay.classList.add('hidden');
+}
+
+/* =====================================================
+   UPDATE UI
+===================================================== */
+function updateUI() {
+  const has = state.totalPages > 0;
+
+  dom.placeholder.classList.toggle('hidden', has);
+  dom.btnPrint.disabled  = !has;
+  dom.btnShare.disabled  = !has;
+  dom.btnPrev.disabled   = !has || state.currentPage <= 1;
+  dom.btnNext.disabled   = !has || state.currentPage >= state.totalPages;
+  dom.pageInput.disabled = !has;
+  dom.pageInput.value    = has ? state.currentPage : 1;
+  dom.totalPages.textContent    = has ? state.totalPages : '—';
+  dom.zoomIndicator.textContent = has ? `${state.zoom}%` : '—%';
+
+  // Mostra/nascondi pulsante chiudi
+  dom.btnClose.style.display = has ? 'flex' : 'none';
+  dom.sepClose.style.display = has ? 'block' : 'none';
+
+  if (has && state.pdfFile) {
+    dom.docTitle.textContent    = state.pdfFile.name;
+    dom.docSubtitle.textContent = `${state.totalPages} pagine · ${(state.pdfFile.size / 1024).toFixed(0)} KB`;
+  } else {
+    dom.docTitle.textContent    = 'Nessun documento aperto';
+    dom.docSubtitle.textContent = 'Apri un file PDF per iniziare';
+  }
+}
+
+/* =====================================================
+   INIT DEVEXPRESS
+===================================================== */
+function initDevExpressViewer() {
+  const hasDx = typeof DevExpress !== 'undefined'
+    && DevExpress.ui
+    && typeof DevExpress.ui.dxPdfViewer !== 'undefined';
+
+  if (!hasDx) {
+    console.warn('[OK PDF] dxPdfViewer non disponibile — fallback embed attivo');
+    state.useDevExpress = false;
+    return;
+  }
+
+  try {
+    const el = dom.pdfViewer;
+    DevExpress.ui.dxPdfViewer(el, {
+      height: '100%',
+      width:  '100%',
+      toolbar: { visible: false },
+
+      documentLoaded(e) {
+        const comp = e.component;
+
+        state.totalPages  = readPageCount(comp);
+        state.currentPage = 1;
+        state.zoom        = readZoom(comp);
+        state.viewerReady = true;
+        hideLoading();
+        updateUI();
+        showToast('Documento caricato', 'success');
+        console.log('[OK PDF] Pagine rilevate:', state.totalPages, '| Zoom:', state.zoom + '%');
+      },
+
+      currentPageIndexChanged(e) {
+        state.currentPage = (e.value ?? 0) + 1;   // DevExpress: 0-based
+        updateUI();
+      },
+
+      zoomChanged(e) {
+        state.zoom = Math.round((e.value || 1) * 100);
+        dom.zoomIndicator.textContent = `${state.zoom}%`;
+      },
+
+      loadingFailed() {
+        hideLoading();
+        showToast('Errore durante il caricamento del documento', 'error');
+        resetState();
+        updateUI();
+      },
+    });
+
+    state.viewer = DevExpress.ui.dxPdfViewer.getInstance(el);
+    state.useDevExpress = !!state.viewer;
+    console.log('[OK PDF] dxPdfViewer pronto');
+  } catch (err) {
+    console.error('[OK PDF] Init DevExpress fallita:', err);
+    state.useDevExpress = false;
+  }
+}
+
+/* =====================================================
+   Legge il numero di pagine dal componente DevExpress
+   provando tutte le varianti API note (v23/v24)
+===================================================== */
+function readPageCount(comp) {
+  try {
+    if (typeof comp.pageCount === 'number' && comp.pageCount > 0) return comp.pageCount;
+    if (typeof comp.pageCount === 'function') {
+      const n = comp.pageCount();
+      if (n > 0) return n;
+    }
+    const opt = comp.option('pageCount');
+    if (opt > 0) return opt;
+    // Private API — fallback estremo
+    const doc = comp._document || comp.option('document');
+    if (doc && doc.pageCount > 0) return doc.pageCount;
+  } catch(e) {
+    console.warn('[OK PDF] readPageCount error:', e.message);
+  }
+  return 1;
+}
+
+/* Legge lo zoom corrente */
+function readZoom(comp) {
+  try {
+    if (typeof comp.zoom === 'number') return Math.round(comp.zoom * 100);
+    if (typeof comp.zoom === 'function') return Math.round(comp.zoom() * 100);
+    const z = comp.option('zoom');
+    if (z && z.value) return Math.round(z.value * 100);
+  } catch(e) {}
+  return 100;
+}
+
+
+function openPdfFile(file) {
+  if (!file) return;
+  const ok = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  if (!ok) { showToast('Formato non supportato. Seleziona un file PDF.', 'error'); return; }
+
+  if (state.pdfUrl) URL.revokeObjectURL(state.pdfUrl);
+
+  state.pdfFile     = file;
+  state.pdfUrl      = URL.createObjectURL(file);
+  state.totalPages  = 0;
+  state.currentPage = 1;
+  state.viewerReady = false;
+
+  showLoading(`Apertura: ${file.name}`);
+
+  if (state.useDevExpress && state.viewer) {
+    try {
+      state.viewer.option('document', { url: state.pdfUrl });
+    } catch (e) {
+      console.error('[OK PDF] DevExpress load error:', e);
+      loadFallback();
+    }
+  } else {
+    loadFallback();
+  }
+}
+
+/* =====================================================
+   FALLBACK <embed>
+===================================================== */
+function loadFallback() {
+  dom.pdfViewer.innerHTML = '';
+  dom.placeholder.classList.add('hidden');
+
+  const embed = document.createElement('embed');
+  embed.src  = state.pdfUrl;
+  embed.type = 'application/pdf';
+  embed.style.cssText = 'width:100%;height:100%;border:none;';
+
+  let resolved = false;
+  const resolve = (warn) => {
+    if (resolved) return;
+    resolved = true;
+    state.totalPages  = 1;
+    state.currentPage = 1;
+    state.viewerReady = true;
+    hideLoading();
+    updateUI();
+    if (warn) showToast('Documento aperto (modalità compatibilità)', 'warning');
+  };
+
+  embed.onload  = () => resolve(true);
+  embed.onerror = () => {
+    hideLoading();
+    showToast('Impossibile visualizzare il documento', 'error');
+    resetState();
+    updateUI();
+  };
+
+  setTimeout(() => resolve(true), 2200);
+  dom.pdfViewer.appendChild(embed);
+}
+
+/* =====================================================
+   RESET
+===================================================== */
+function resetState() {
+  if (state.pdfUrl) URL.revokeObjectURL(state.pdfUrl);
+  Object.assign(state, {
+    pdfFile: null, pdfUrl: null,
+    totalPages: 0, currentPage: 1, zoom: 100, viewerReady: false,
+  });
+  dom.pdfViewer.innerHTML = '';
+}
+
+/* =====================================================
+   NAVIGAZIONE PAGINE
+===================================================== */
+function goToPage(page) {
+  if (!state.viewerReady || state.totalPages === 0) return;
+  const p = Math.max(1, Math.min(page, state.totalPages));
+  state.currentPage = p;
+  if (state.useDevExpress && state.viewer) {
+    try { state.viewer.option('currentPageIndex', p - 1); } catch(e) {}
+  }
+  updateUI();
+}
+
+/* =====================================================
+   STAMPA
+===================================================== */
+function printDocument() {
+  if (!state.viewerReady || !state.pdfUrl) {
+    showToast('Nessun documento da stampare', 'warning');
+    return;
+  }
+
+  // Tentativo via DevExpress
+  if (state.useDevExpress && state.viewer) {
+    try { state.viewer.print(); return; } catch(e) {}
+  }
+
+  // Fallback: iframe + window.print()
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = state.pdfUrl;
+  document.body.appendChild(iframe);
+  iframe.onload = () => {
+    try { iframe.contentWindow.print(); } catch(e) { window.print(); }
+    setTimeout(() => document.body.removeChild(iframe), 1500);
+  };
+}
+
+/* =====================================================
+   CONDIVISIONE (Web Share API)
+===================================================== */
+async function shareDocument() {
+  if (!state.pdfFile) { showToast('Nessun documento da condividere', 'warning'); return; }
+
+  if (navigator.share) {
+    const baseData = { title: state.pdfFile.name, text: state.pdfFile.name };
+    const canFiles  = navigator.canShare?.({ files: [state.pdfFile] });
+    try {
+      await navigator.share(canFiles ? { ...baseData, files: [state.pdfFile] } : baseData);
+      return;
+    } catch(err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+
+  // Fallback: copia URL blob negli appunti
+  try {
+    await navigator.clipboard.writeText(state.pdfUrl);
+    showToast('Link copiato negli appunti', 'success');
+  } catch(e) {
+    showToast('Condivisione non supportata in questo browser', 'warning');
+  }
+}
+
+/* =====================================================
+   DRAG & DROP
+===================================================== */
+function initDragDrop() {
+  const area = dom.viewerArea;
+  area.addEventListener('dragenter', e => { e.preventDefault(); area.classList.add('drag-over'); });
+  area.addEventListener('dragover',  e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  area.addEventListener('dragleave', e => { if (!area.contains(e.relatedTarget)) area.classList.remove('drag-over'); });
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.classList.remove('drag-over');
+    const f = e.dataTransfer.files?.[0];
+    if (f) openPdfFile(f);
+  });
+}
+
+/* =====================================================
+   ADMOB — predisposto per Step 6
+===================================================== */
+function initAdMob() {
+  if (!APP_CONFIG.ADS_ENABLED || APP_CONFIG.IS_PRO) return;
+  // Step 6: attivare banner
+  // document.getElementById('admob-banner').style.display = 'flex';
+  // document.documentElement.style.setProperty('--admob-h', '60px');
+  console.log('[OK PDF] AdMob predisposto (Step 6)');
+}
+
+/* =====================================================
+   PLAY BILLING — predisposto per Step 7
+===================================================== */
+function initBilling() {
+  // Step 7: Digital Goods API (TWA) per verificare stato Pro
+  console.log('[OK PDF] Play Billing predisposto (Step 7)');
+}
+
+/* =====================================================
+   EVENT LISTENERS
+===================================================== */
+function initEvents() {
+  // Apri file
+  [dom.btnOpen, dom.btnOpenMain].forEach(b => b.addEventListener('click', () => dom.fileInput.click()));
+  dom.fileInput.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) { openPdfFile(f); dom.fileInput.value = ''; }
+  });
+
+  // Toolbar
+  dom.btnPrint.addEventListener('click', printDocument);
+  dom.btnShare.addEventListener('click', shareDocument);
+  dom.btnClose.addEventListener('click', () => {
+    resetState();
+    updateUI();
+    showToast('Documento chiuso', 'info');
+  });
+
+  // Status bar navigazione
+  dom.btnPrev.addEventListener('click', () => goToPage(state.currentPage - 1));
+  dom.btnNext.addEventListener('click', () => goToPage(state.currentPage + 1));
+
+  dom.pageInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { goToPage(+dom.pageInput.value || state.currentPage); dom.pageInput.blur(); }
+  });
+  dom.pageInput.addEventListener('blur', () => {
+    const v = parseInt(dom.pageInput.value, 10);
+    goToPage(isNaN(v) ? state.currentPage : v);
+  });
+
+  // Tastiera
+  document.addEventListener('keydown', e => {
+    if (!state.viewerReady || !state.totalPages) return;
+    if (document.activeElement === dom.pageInput) return;
+    const k = e.key;
+    if (k === 'ArrowLeft'  || k === 'ArrowUp')    goToPage(state.currentPage - 1);
+    if (k === 'ArrowRight' || k === 'ArrowDown')   goToPage(state.currentPage + 1);
+    if (k === 'Home') goToPage(1);
+    if (k === 'End')  goToPage(state.totalPages);
+  });
+}
+
+/* =====================================================
+   INIT APP
+===================================================== */
+function initApp() {
+  console.log(`[OK PDF] ${APP_CONFIG.APP_NAME} v${APP_CONFIG.APP_VERSION}`);
+  initDevExpressViewer();
+  initDragDrop();
+  initEvents();
+  initAdMob();
+  initBilling();
+  updateUI();
+  console.log('[OK PDF] Pronto ✓');
+}
+
+document.readyState === 'loading'
+  ? document.addEventListener('DOMContentLoaded', initApp)
+  : initApp();
+
+/* =====================================================
+   SERVICE WORKER — registrazione
+===================================================== */
+(function registerSW() {
+  if (!('serviceWorker' in navigator)) {
+    console.log('[PWA] Service Worker non supportato in questo browser');
+    return;
+  }
+
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('./service-worker.js', {
+        scope: './',
+      });
+      console.log('[PWA] Service Worker registrato, scope:', reg.scope);
+
+      // Controlla aggiornamenti ogni volta che l'app torna in primo piano
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+
+      // Notifica all'utente se c'è un aggiornamento disponibile
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        newSW?.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            showToast('Aggiornamento disponibile — ricarica l\'app per applicarlo', 'info', 5000);
+          }
+        });
+      });
+    } catch (err) {
+      console.error('[PWA] Registrazione Service Worker fallita:', err);
+    }
+  });
+})();
+
+/* =====================================================
+   PWA INSTALL BANNER — beforeinstallprompt
+===================================================== */
+(function initPwaBanner() {
+  let deferredPrompt = null;
+  const banner      = document.getElementById('pwa-banner');
+  const btnInstall  = document.getElementById('btn-pwa-install');
+  const btnDismiss  = document.getElementById('btn-pwa-dismiss');
+
+  // Chiave localStorage per ricordare se l'utente ha già chiuso il banner
+  const DISMISSED_KEY = 'oksuite-pdf-pwa-dismissed';
+
+  // Non mostrare se già scartato in precedenza
+  if (localStorage.getItem(DISMISSED_KEY)) return;
+
+  // L'evento beforeinstallprompt viene emesso dal browser quando la PWA
+  // soddisfa i criteri di installabilità (manifest + HTTPS + SW registrato)
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();           // Impedisce il prompt automatico del browser
+    deferredPrompt = e;           // Salva l'evento per usarlo più tardi
+    banner.classList.remove('hidden');
+    console.log('[PWA] Install prompt disponibile');
+  });
+
+  // Pulsante Installa → mostra il prompt nativo
+  btnInstall?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    banner.classList.add('hidden');
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log('[PWA] Scelta utente:', outcome);
+    deferredPrompt = null;
+    if (outcome === 'accepted') {
+      showToast('App installata con successo!', 'success');
+    }
+  });
+
+  // Pulsante Chiudi → nasconde e ricorda la scelta
+  btnDismiss?.addEventListener('click', () => {
+    banner.classList.add('hidden');
+    localStorage.setItem(DISMISSED_KEY, '1');
+    deferredPrompt = null;
+  });
+
+  // Se l'app è già installata (display: standalone) nascondi il banner
+  if (window.matchMedia('(display-mode: standalone)').matches) {
+    banner.classList.add('hidden');
+    console.log('[PWA] App già in modalità standalone');
+  }
+
+  // Evento fired quando l'installazione va a buon fine
+  window.addEventListener('appinstalled', () => {
+    banner.classList.add('hidden');
+    deferredPrompt = null;
+    showToast('OK Suite PDF installata!', 'success');
+    console.log('[PWA] App installata');
+  });
+})();
+</script>
+
+</body>
+</html>
