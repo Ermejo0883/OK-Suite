@@ -25,18 +25,15 @@
   <meta name="msapplication-TileColor" content="#0f1117" />
   <meta name="msapplication-TileImage" content="icons/icon-192.png" />
 
+  <!-- PDF.js — Mozilla (viewer PDF nativo) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module" id="pdfjs-script"></script>
+
   <!-- Google Fonts: DM Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
-  <!-- DevExpress CSS + JS (CDN ufficiale) -->
-  <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/25.2.5/css/dx.dark.compact.css" />
-  <script src="https://cdn3.devexpress.com/jslib/25.2.5/js/dx.all.js"></script>
-  <script>
-    // Registrazione licenza DevExtreme — deve avvenire prima di qualsiasi uso del componente
-    DevExpress.config({ licenseKey: "ewogICJmb3JtYXQiOiAxLAogICJjdXN0b21lcklkIjogImNlNDgxMDBjLWYyOTgtNDc0Yi05MmFiLWI0Y2UzMDBhMGYxNyIsCiAgIm1heFZlcnNpb25BbGxvd2VkIjogMjUyCn0=.b7hez/AL+cjxzSZZ4AenoggT6u51nHh5fVUSb0XVRf0LSOSr90Z4RBlkFhVMFz+3EvvU4kGYLRNdPbE00djR1Fxi0HV4dIUta405zIilLxgn1f4ER4HXdSIVdDlldbqQSj9akA==" });
-  </script>
+
 
   <style>
     /* =====================================================
@@ -439,7 +436,7 @@
   ================================================ -->
   <main id="viewer-area">
 
-    <!-- Contenitore DevExpress dxPdfViewer -->
+    <!-- Contenitore PDF.js viewer -->
     <div id="pdf-viewer"></div>
 
     <!-- Placeholder stato iniziale -->
@@ -534,11 +531,11 @@
      JAVASCRIPT
 ==================================================== -->
 <script>
+
 'use strict';
 
 /* =====================================================
    CONFIGURAZIONE GLOBALE
-   ► Modificare qui le flag per attivare/disattivare funzioni
 ===================================================== */
 const APP_CONFIG = {
   ADS_ENABLED: false,   // Step 6: true → mostra banner AdMob
@@ -551,14 +548,14 @@ const APP_CONFIG = {
    STATE
 ===================================================== */
 const state = {
-  pdfFile:       null,    // File aperto
-  pdfUrl:        null,    // Object URL (blob:)
-  totalPages:    0,
-  currentPage:   1,
-  zoom:          100,
-  viewer:        null,    // Istanza DevExpress dxPdfViewer
-  viewerReady:   false,
-  useDevExpress: true,    // false = fallback <embed>
+  pdfFile:      null,
+  pdfUrl:       null,
+  totalPages:   0,
+  currentPage:  1,
+  zoom:         1.0,      // scala reale PDF.js (1.0 = 100%)
+  pdfDoc:       null,     // PDF.js PDFDocumentProxy
+  renderTask:   null,     // task di render corrente
+  rendering:    false,
 };
 
 /* =====================================================
@@ -575,6 +572,8 @@ const dom = {
   btnOpenMain:    $('btn-open-main'),
   btnPrint:       $('btn-print'),
   btnShare:       $('btn-share'),
+  btnClose:       $('btn-close'),
+  sepClose:       $('sep-close'),
   btnPrev:        $('btn-prev'),
   btnNext:        $('btn-next'),
   pageInput:      $('page-input'),
@@ -584,8 +583,6 @@ const dom = {
   docSubtitle:    $('doc-subtitle'),
   toastContainer: $('toast-container'),
   viewerArea:     $('viewer-area'),
-  btnClose:       $('btn-close'),
-  sepClose:       $('sep-close'),
 };
 
 /* =====================================================
@@ -624,10 +621,10 @@ function updateUI() {
   dom.pageInput.disabled = !has;
   dom.pageInput.value    = has ? state.currentPage : 1;
   dom.totalPages.textContent    = has ? state.totalPages : '—';
-  dom.zoomIndicator.textContent = has ? `${state.zoom}%` : '—%';
+  dom.zoomIndicator.textContent = has ? `${Math.round(state.zoom * 100)}%` : '—%';
 
   // Mostra/nascondi pulsante chiudi
-  dom.btnClose.style.display = has ? 'flex' : 'none';
+  dom.btnClose.style.display = has ? 'flex'  : 'none';
   dom.sepClose.style.display = has ? 'block' : 'none';
 
   if (has && state.pdfFile) {
@@ -640,104 +637,128 @@ function updateUI() {
 }
 
 /* =====================================================
-   INIT DEVEXPRESS
+   PDF.js — setup
+   Usiamo la versione ESM dal CDN Cloudflare
 ===================================================== */
-function initDevExpressViewer() {
-  const hasDx = typeof DevExpress !== 'undefined'
-    && DevExpress.ui
-    && typeof DevExpress.ui.dxPdfViewer !== 'undefined';
+let pdfjsLib = null;
 
-  if (!hasDx) {
-    console.warn('[OK PDF] dxPdfViewer non disponibile — fallback embed attivo');
-    state.useDevExpress = false;
-    return;
-  }
-
+async function initPdfJs() {
   try {
-    const el = dom.pdfViewer;
-    DevExpress.ui.dxPdfViewer(el, {
-      height: '100%',
-      width:  '100%',
-      toolbar: { visible: false },
-
-      documentLoaded(e) {
-        const comp = e.component;
-
-        state.totalPages  = readPageCount(comp);
-        state.currentPage = 1;
-        state.zoom        = readZoom(comp);
-        state.viewerReady = true;
-        hideLoading();
-        updateUI();
-        showToast('Documento caricato', 'success');
-        console.log('[OK PDF] Pagine rilevate:', state.totalPages, '| Zoom:', state.zoom + '%');
-      },
-
-      currentPageIndexChanged(e) {
-        state.currentPage = (e.value ?? 0) + 1;   // DevExpress: 0-based
-        updateUI();
-      },
-
-      zoomChanged(e) {
-        state.zoom = Math.round((e.value || 1) * 100);
-        dom.zoomIndicator.textContent = `${state.zoom}%`;
-      },
-
-      loadingFailed() {
-        hideLoading();
-        showToast('Errore durante il caricamento del documento', 'error');
-        resetState();
-        updateUI();
-      },
-    });
-
-    state.viewer = DevExpress.ui.dxPdfViewer.getInstance(el);
-    state.useDevExpress = !!state.viewer;
-    console.log('[OK PDF] dxPdfViewer pronto');
-  } catch (err) {
-    console.error('[OK PDF] Init DevExpress fallita:', err);
-    state.useDevExpress = false;
+    // Import dinamico del modulo ESM
+    const mod = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+    pdfjsLib = mod;
+    // Worker — stesso CDN, stessa versione
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+    console.log('[OK PDF] PDF.js pronto ✓');
+    return true;
+  } catch(err) {
+    console.error('[OK PDF] PDF.js init fallita:', err);
+    return false;
   }
 }
 
 /* =====================================================
-   Legge il numero di pagine dal componente DevExpress
-   provando tutte le varianti API note (v23/v24)
+   CANVAS VIEWER — crea/ottiene il canvas per il render
 ===================================================== */
-function readPageCount(comp) {
-  try {
-    if (typeof comp.pageCount === 'number' && comp.pageCount > 0) return comp.pageCount;
-    if (typeof comp.pageCount === 'function') {
-      const n = comp.pageCount();
-      if (n > 0) return n;
-    }
-    const opt = comp.option('pageCount');
-    if (opt > 0) return opt;
-    // Private API — fallback estremo
-    const doc = comp._document || comp.option('document');
-    if (doc && doc.pageCount > 0) return doc.pageCount;
-  } catch(e) {
-    console.warn('[OK PDF] readPageCount error:', e.message);
+function getCanvas() {
+  let canvas = dom.pdfViewer.querySelector('canvas#pdf-canvas');
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.id = 'pdf-canvas';
+    canvas.style.cssText = `
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    `;
+    // Wrapper scrollabile
+    dom.pdfViewer.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.id = 'pdf-wrapper';
+    wrapper.style.cssText = `
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      background: #3a3a3a;
+    `;
+    wrapper.appendChild(canvas);
+    dom.pdfViewer.appendChild(wrapper);
   }
-  return 1;
+  return canvas;
 }
 
-/* Legge lo zoom corrente */
-function readZoom(comp) {
+/* =====================================================
+   RENDER PAGINA
+===================================================== */
+async function renderPage(pageNum) {
+  if (!state.pdfDoc || state.rendering) return;
+  state.rendering = true;
+
   try {
-    if (typeof comp.zoom === 'number') return Math.round(comp.zoom * 100);
-    if (typeof comp.zoom === 'function') return Math.round(comp.zoom() * 100);
-    const z = comp.option('zoom');
-    if (z && z.value) return Math.round(z.value * 100);
-  } catch(e) {}
-  return 100;
+    const page    = await state.pdfDoc.getPage(pageNum);
+    const canvas  = getCanvas();
+    const ctx     = canvas.getContext('2d');
+
+    // Calcola viewport adattato alla larghezza disponibile
+    const containerW = dom.pdfViewer.clientWidth - 40; // padding
+    const baseVP     = page.getViewport({ scale: 1.0 });
+    const autoScale  = Math.min(containerW / baseVP.width, 2.0);
+    const scale      = state.zoom === 1.0 ? autoScale : state.zoom;
+    const viewport   = page.getViewport({ scale });
+
+    canvas.width  = viewport.width;
+    canvas.height = viewport.height;
+
+    // Annulla render precedente se ancora in corso
+    if (state.renderTask) {
+      state.renderTask.cancel();
+      state.renderTask = null;
+    }
+
+    state.renderTask = page.render({ canvasContext: ctx, viewport });
+    await state.renderTask.promise;
+    state.renderTask = null;
+
+    // Aggiorna zoom reale nella UI
+    state.zoom = scale;
+    state.currentPage = pageNum;
+    updateUI();
+
+  } catch(err) {
+    if (err?.name !== 'RenderingCancelledException') {
+      console.error('[OK PDF] Render error:', err);
+      showToast('Errore nel rendering della pagina', 'error');
+    }
+  } finally {
+    state.rendering = false;
+  }
 }
 
-
-function openPdfFile(file) {
+/* =====================================================
+   APERTURA PDF
+===================================================== */
+async function openPdfFile(file) {
   if (!file) return;
   const ok = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   if (!ok) { showToast('Formato non supportato. Seleziona un file PDF.', 'error'); return; }
+
+  // Inizializza PDF.js se non ancora fatto
+  if (!pdfjsLib) {
+    showLoading('Inizializzazione visualizzatore…');
+    const ready = await initPdfJs();
+    if (!ready) {
+      hideLoading();
+      showToast('Impossibile caricare il visualizzatore PDF', 'error');
+      return;
+    }
+  }
 
   if (state.pdfUrl) URL.revokeObjectURL(state.pdfUrl);
 
@@ -745,66 +766,44 @@ function openPdfFile(file) {
   state.pdfUrl      = URL.createObjectURL(file);
   state.totalPages  = 0;
   state.currentPage = 1;
-  state.viewerReady = false;
+  state.zoom        = 1.0;
+  state.pdfDoc      = null;
 
   showLoading(`Apertura: ${file.name}`);
-
-  if (state.useDevExpress && state.viewer) {
-    try {
-      state.viewer.option('document', { url: state.pdfUrl });
-    } catch (e) {
-      console.error('[OK PDF] DevExpress load error:', e);
-      loadFallback();
-    }
-  } else {
-    loadFallback();
-  }
-}
-
-/* =====================================================
-   FALLBACK <embed>
-===================================================== */
-function loadFallback() {
-  dom.pdfViewer.innerHTML = '';
   dom.placeholder.classList.add('hidden');
 
-  const embed = document.createElement('embed');
-  embed.src  = state.pdfUrl;
-  embed.type = 'application/pdf';
-  embed.style.cssText = 'width:100%;height:100%;border:none;';
+  try {
+    const loadingTask = pdfjsLib.getDocument({ url: state.pdfUrl });
+    state.pdfDoc = await loadingTask.promise;
+    state.totalPages = state.pdfDoc.numPages;
 
-  let resolved = false;
-  const resolve = (warn) => {
-    if (resolved) return;
-    resolved = true;
-    state.totalPages  = 1;
-    state.currentPage = 1;
-    state.viewerReady = true;
     hideLoading();
     updateUI();
-    if (warn) showToast('Documento aperto (modalità compatibilità)', 'warning');
-  };
+    showToast('Documento caricato', 'success');
+    console.log('[OK PDF] Pagine:', state.totalPages);
 
-  embed.onload  = () => resolve(true);
-  embed.onerror = () => {
+    // Render prima pagina
+    await renderPage(1);
+
+  } catch(err) {
     hideLoading();
-    showToast('Impossibile visualizzare il documento', 'error');
+    console.error('[OK PDF] Errore apertura:', err);
+    showToast('Errore durante il caricamento del documento', 'error');
     resetState();
     updateUI();
-  };
-
-  setTimeout(() => resolve(true), 2200);
-  dom.pdfViewer.appendChild(embed);
+  }
 }
 
 /* =====================================================
    RESET
 ===================================================== */
 function resetState() {
-  if (state.pdfUrl) URL.revokeObjectURL(state.pdfUrl);
+  if (state.renderTask) { state.renderTask.cancel(); state.renderTask = null; }
+  if (state.pdfDoc)     { state.pdfDoc.destroy(); }
+  if (state.pdfUrl)     { URL.revokeObjectURL(state.pdfUrl); }
   Object.assign(state, {
-    pdfFile: null, pdfUrl: null,
-    totalPages: 0, currentPage: 1, zoom: 100, viewerReady: false,
+    pdfFile: null, pdfUrl: null, totalPages: 0,
+    currentPage: 1, zoom: 1.0, pdfDoc: null, rendering: false,
   });
   dom.pdfViewer.innerHTML = '';
 }
@@ -812,31 +811,17 @@ function resetState() {
 /* =====================================================
    NAVIGAZIONE PAGINE
 ===================================================== */
-function goToPage(page) {
-  if (!state.viewerReady || state.totalPages === 0) return;
+async function goToPage(page) {
+  if (!state.pdfDoc || state.totalPages === 0) return;
   const p = Math.max(1, Math.min(page, state.totalPages));
-  state.currentPage = p;
-  if (state.useDevExpress && state.viewer) {
-    try { state.viewer.option('currentPageIndex', p - 1); } catch(e) {}
-  }
-  updateUI();
+  await renderPage(p);
 }
 
 /* =====================================================
    STAMPA
 ===================================================== */
 function printDocument() {
-  if (!state.viewerReady || !state.pdfUrl) {
-    showToast('Nessun documento da stampare', 'warning');
-    return;
-  }
-
-  // Tentativo via DevExpress
-  if (state.useDevExpress && state.viewer) {
-    try { state.viewer.print(); return; } catch(e) {}
-  }
-
-  // Fallback: iframe + window.print()
+  if (!state.pdfUrl) { showToast('Nessun documento da stampare', 'warning'); return; }
   const iframe = document.createElement('iframe');
   iframe.style.display = 'none';
   iframe.src = state.pdfUrl;
@@ -852,9 +837,8 @@ function printDocument() {
 ===================================================== */
 async function shareDocument() {
   if (!state.pdfFile) { showToast('Nessun documento da condividere', 'warning'); return; }
-
   if (navigator.share) {
-    const baseData = { title: state.pdfFile.name, text: state.pdfFile.name };
+    const baseData  = { title: state.pdfFile.name, text: state.pdfFile.name };
     const canFiles  = navigator.canShare?.({ files: [state.pdfFile] });
     try {
       await navigator.share(canFiles ? { ...baseData, files: [state.pdfFile] } : baseData);
@@ -863,8 +847,6 @@ async function shareDocument() {
       if (err.name === 'AbortError') return;
     }
   }
-
-  // Fallback: copia URL blob negli appunti
   try {
     await navigator.clipboard.writeText(state.pdfUrl);
     showToast('Link copiato negli appunti', 'success');
@@ -894,9 +876,6 @@ function initDragDrop() {
 ===================================================== */
 function initAdMob() {
   if (!APP_CONFIG.ADS_ENABLED || APP_CONFIG.IS_PRO) return;
-  // Step 6: attivare banner
-  // document.getElementById('admob-banner').style.display = 'flex';
-  // document.documentElement.style.setProperty('--admob-h', '60px');
   console.log('[OK PDF] AdMob predisposto (Step 6)');
 }
 
@@ -904,7 +883,6 @@ function initAdMob() {
    PLAY BILLING — predisposto per Step 7
 ===================================================== */
 function initBilling() {
-  // Step 7: Digital Goods API (TWA) per verificare stato Pro
   console.log('[OK PDF] Play Billing predisposto (Step 7)');
 }
 
@@ -919,7 +897,7 @@ function initEvents() {
     if (f) { openPdfFile(f); dom.fileInput.value = ''; }
   });
 
-  // Toolbar
+  // Toolbar azioni
   dom.btnPrint.addEventListener('click', printDocument);
   dom.btnShare.addEventListener('click', shareDocument);
   dom.btnClose.addEventListener('click', () => {
@@ -928,7 +906,7 @@ function initEvents() {
     showToast('Documento chiuso', 'info');
   });
 
-  // Status bar navigazione
+  // Navigazione pagine
   dom.btnPrev.addEventListener('click', () => goToPage(state.currentPage - 1));
   dom.btnNext.addEventListener('click', () => goToPage(state.currentPage + 1));
 
@@ -942,14 +920,23 @@ function initEvents() {
 
   // Tastiera
   document.addEventListener('keydown', e => {
-    if (!state.viewerReady || !state.totalPages) return;
+    if (!state.pdfDoc || !state.totalPages) return;
     if (document.activeElement === dom.pageInput) return;
     const k = e.key;
-    if (k === 'ArrowLeft'  || k === 'ArrowUp')    goToPage(state.currentPage - 1);
-    if (k === 'ArrowRight' || k === 'ArrowDown')   goToPage(state.currentPage + 1);
+    if (k === 'ArrowLeft'  || k === 'ArrowUp')   goToPage(state.currentPage - 1);
+    if (k === 'ArrowRight' || k === 'ArrowDown')  goToPage(state.currentPage + 1);
     if (k === 'Home') goToPage(1);
     if (k === 'End')  goToPage(state.totalPages);
   });
+
+  // Zoom con rotella del mouse (Ctrl+scroll)
+  dom.viewerArea.addEventListener('wheel', e => {
+    if (!e.ctrlKey || !state.pdfDoc) return;
+    e.preventDefault();
+    const delta  = e.deltaY > 0 ? -0.1 : 0.1;
+    state.zoom   = Math.max(0.5, Math.min(state.zoom + delta, 4.0));
+    renderPage(state.currentPage);
+  }, { passive: false });
 }
 
 /* =====================================================
@@ -957,7 +944,6 @@ function initEvents() {
 ===================================================== */
 function initApp() {
   console.log(`[OK PDF] ${APP_CONFIG.APP_NAME} v${APP_CONFIG.APP_VERSION}`);
-  initDevExpressViewer();
   initDragDrop();
   initEvents();
   initAdMob();
@@ -969,6 +955,7 @@ function initApp() {
 document.readyState === 'loading'
   ? document.addEventListener('DOMContentLoaded', initApp)
   : initApp();
+
 
 /* =====================================================
    SERVICE WORKER — registrazione
@@ -1064,6 +1051,7 @@ document.readyState === 'loading'
     console.log('[PWA] App installata');
   });
 })();
+
 </script>
 
 </body>

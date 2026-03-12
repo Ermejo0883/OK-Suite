@@ -8,8 +8,8 @@
    - Fallback offline per tutto il resto
 ============================================================ */
 
-const CACHE_NAME    = 'oksuite-pdf-v1';
-const CACHE_RUNTIME = 'oksuite-pdf-runtime-v1';
+const CACHE_NAME    = 'oksuite-pdf-v2';
+const CACHE_RUNTIME = 'oksuite-pdf-runtime-v2';
 
 /* File locali da mettere subito in cache durante l'install */
 const PRECACHE_URLS = [
@@ -24,6 +24,7 @@ const PRECACHE_URLS = [
   './icons/icon-512.png',
   /* Google Fonts CSS */
   'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap',
+  /* PDF.js (caricato dinamicamente — non in precache) */
 ];
 
 /* Origini CDN da trattare con strategia network-first */
