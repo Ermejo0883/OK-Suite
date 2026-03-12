@@ -492,8 +492,20 @@
 
     <div class="statusbar-sep"></div>
 
-    <!-- Step 2: zoom verrà agganciato al viewer -->
-    <div class="zoom-indicator" id="zoom-indicator">—%</div>
+    <!-- Zoom controls -->
+    <button class="btn-nav" id="btn-zoom-out" title="Zoom out" aria-label="Riduci zoom" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+    </button>
+
+    <div class="zoom-indicator" id="zoom-indicator" title="Clicca per zoom 100%" style="cursor:pointer">—%</div>
+
+    <button class="btn-nav" id="btn-zoom-in" title="Zoom in" aria-label="Aumenta zoom" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+    </button>
   </footer>
 
   <!-- ADMOB PLACEHOLDER — Step 6 (ADS_ENABLED = false) -->
@@ -583,6 +595,8 @@ const dom = {
   docSubtitle:    $('doc-subtitle'),
   toastContainer: $('toast-container'),
   viewerArea:     $('viewer-area'),
+  btnZoomIn:      $('btn-zoom-in'),
+  btnZoomOut:     $('btn-zoom-out'),
 };
 
 /* =====================================================
@@ -614,10 +628,12 @@ function updateUI() {
   const has = state.totalPages > 0;
 
   dom.placeholder.classList.toggle('hidden', has);
-  dom.btnPrint.disabled  = !has;
-  dom.btnShare.disabled  = !has;
-  dom.btnPrev.disabled   = !has || state.currentPage <= 1;
-  dom.btnNext.disabled   = !has || state.currentPage >= state.totalPages;
+  dom.btnPrint.disabled   = !has;
+  dom.btnShare.disabled   = !has;
+  dom.btnPrev.disabled    = !has || state.currentPage <= 1;
+  dom.btnNext.disabled    = !has || state.currentPage >= state.totalPages;
+  dom.btnZoomIn.disabled  = !has;
+  dom.btnZoomOut.disabled = !has;
   dom.pageInput.disabled = !has;
   dom.pageInput.value    = has ? state.currentPage : 1;
   dom.totalPages.textContent    = has ? state.totalPages : '—';
@@ -702,32 +718,31 @@ async function renderPage(pageNum) {
   state.rendering = true;
 
   try {
-    const page    = await state.pdfDoc.getPage(pageNum);
-    const canvas  = getCanvas();
-    const ctx     = canvas.getContext('2d');
+    const page   = await state.pdfDoc.getPage(pageNum);
+    const canvas = getCanvas();
+    const ctx    = canvas.getContext('2d');
 
-    // Calcola viewport adattato alla larghezza disponibile
-    const containerW = dom.pdfViewer.clientWidth - 40; // padding
+    // Calcola scala: se zoom è ancora al default (1.0) adatta alla larghezza
+    // del contenitore ma con un max ragionevole di 1.5 su desktop
     const baseVP     = page.getViewport({ scale: 1.0 });
-    const autoScale  = Math.min(containerW / baseVP.width, 2.0);
-    const scale      = state.zoom === 1.0 ? autoScale : state.zoom;
+    const containerW = dom.pdfViewer.clientWidth - 40;
+    const containerH = dom.pdfViewer.clientHeight - 40;
+    // Fit-to-width ma non superare fit-to-height su schermi larghi
+    const scaleW     = containerW / baseVP.width;
+    const scaleH     = containerH / baseVP.height;
+    const autoScale  = Math.min(scaleW, scaleH, 1.5); // max 1.5x in auto
+    const scale      = state.zoomLocked ? state.zoom : autoScale;
+
     const viewport   = page.getViewport({ scale });
+    canvas.width     = viewport.width;
+    canvas.height    = viewport.height;
 
-    canvas.width  = viewport.width;
-    canvas.height = viewport.height;
-
-    // Annulla render precedente se ancora in corso
-    if (state.renderTask) {
-      state.renderTask.cancel();
-      state.renderTask = null;
-    }
-
+    if (state.renderTask) { state.renderTask.cancel(); state.renderTask = null; }
     state.renderTask = page.render({ canvasContext: ctx, viewport });
     await state.renderTask.promise;
     state.renderTask = null;
 
-    // Aggiorna zoom reale nella UI
-    state.zoom = scale;
+    state.zoom        = scale;
     state.currentPage = pageNum;
     updateUI();
 
@@ -739,6 +754,22 @@ async function renderPage(pageNum) {
   } finally {
     state.rendering = false;
   }
+}
+
+/* Zoom in / out */
+async function changeZoom(delta) {
+  if (!state.pdfDoc) return;
+  state.zoomLocked = true;
+  state.zoom = Math.max(0.25, Math.min(state.zoom + delta, 4.0));
+  await renderPage(state.currentPage);
+}
+
+/* Zoom reset — torna al fit automatico */
+async function resetZoom() {
+  if (!state.pdfDoc) return;
+  state.zoomLocked = false;
+  state.zoom = 1.0;
+  await renderPage(state.currentPage);
 }
 
 /* =====================================================
@@ -767,6 +798,7 @@ async function openPdfFile(file) {
   state.totalPages  = 0;
   state.currentPage = 1;
   state.zoom        = 1.0;
+  state.zoomLocked  = false;
   state.pdfDoc      = null;
 
   showLoading(`Apertura: ${file.name}`);
@@ -803,7 +835,7 @@ function resetState() {
   if (state.pdfUrl)     { URL.revokeObjectURL(state.pdfUrl); }
   Object.assign(state, {
     pdfFile: null, pdfUrl: null, totalPages: 0,
-    currentPage: 1, zoom: 1.0, pdfDoc: null, rendering: false,
+    currentPage: 1, zoom: 1.0, zoomLocked: false, pdfDoc: null, rendering: false,
   });
   dom.pdfViewer.innerHTML = '';
 }
@@ -928,6 +960,11 @@ function initEvents() {
     if (k === 'Home') goToPage(1);
     if (k === 'End')  goToPage(state.totalPages);
   });
+
+  // Zoom buttons
+  dom.btnZoomIn.addEventListener('click',  () => changeZoom(+0.25));
+  dom.btnZoomOut.addEventListener('click', () => changeZoom(-0.25));
+  dom.zoomIndicator.addEventListener('click', resetZoom);
 
   // Zoom con rotella del mouse (Ctrl+scroll)
   dom.viewerArea.addEventListener('wheel', e => {
