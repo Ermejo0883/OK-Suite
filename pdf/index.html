@@ -514,19 +514,6 @@
        PANNELLO LATERALE (Sommario)
     ===================================================== */
     /* #side-panel legacy — replaced by .side-panel flex layout */
-    .side-panel-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .btn-panel-close {
-      width: 28px; height: 28px;
-      background: transparent; border: none;
-      color: var(--text-dim); border-radius: 6px;
-      cursor: pointer; display: flex;
-      align-items: center; justify-content: center;
-      transition: background .15s, color .15s;
-    }
     .btn-panel-close:hover { background: var(--border); color: var(--text); }
 
     #outline-list {
@@ -559,17 +546,6 @@
       color: var(--text-dim);
       text-align: center;
       font-style: italic;
-    }
-
-    /* Panel overlay (mobile) */
-    #panel-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
-      z-index: 79;
-      display: none;
-    }
-    #panel-overlay.visible { display: block; }
 
     /* =====================================================
        BARRA DI RICERCA
@@ -1145,54 +1121,6 @@
       </div>
     </div>
 
-    <!-- Pannello laterale Sommario -->
-    <div id="panel-overlay"></div>
-    <div id="side-panel">
-      <div class="side-panel-header">
-        <span class="side-panel-title">Sommario</span>
-        <button class="btn-panel-close" id="btn-panel-close" aria-label="Chiudi pannello">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-      <div id="outline-list"></div>
-    </div>
-
-    <!-- Barra di ricerca -->
-    <div id="search-bar">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input type="text" id="search-input" placeholder="Cerca nel documento…" autocomplete="off" />
-      <span id="search-count"></span>
-      <div class="search-sep"></div>
-      <button class="search-nav-btn" id="btn-search-prev" title="Precedente" disabled>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <button class="search-nav-btn" id="btn-search-next" title="Successivo" disabled>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-      <button class="search-nav-btn" id="btn-search-close" title="Chiudi">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-
-    <!-- TTS bar -->
-    <div id="tts-bar">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-      </svg>
-      <span id="tts-status">In lettura…</span>
-      <button class="btn-tts" id="btn-tts-playpause" title="Pausa / Riprendi">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-      </button>
-      <button class="btn-tts" id="btn-tts-stop" title="Ferma lettura">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-      </button>
-    </div>
-
     <!-- Contenitore PDF.js viewer -->
     <div id="pdf-viewer"></div>
 
@@ -1313,7 +1241,7 @@
 const APP_CONFIG = {
   ADS_ENABLED: false,
   IS_PRO:      false,
-  APP_VERSION: '1.0.5',
+  APP_VERSION: '1.0.7',
   APP_NAME:    'OK Suite - PDF',
 };
 
@@ -1772,19 +1700,6 @@ async function printDocument() {
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
-    .side-panel-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .btn-panel-close {
-      width: 28px; height: 28px;
-      background: transparent; border: none;
-      color: var(--text-dim); border-radius: 6px;
-      cursor: pointer; display: flex;
-      align-items: center; justify-content: center;
-      transition: background .15s, color .15s;
-    }
     .btn-panel-close:hover { background: var(--border); color: var(--text); }
 
     #outline-list {
@@ -1820,14 +1735,7 @@ async function printDocument() {
     }
 
     /* Panel overlay (mobile) */
-    #panel-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
-      z-index: 79;
-      display: none;
-    }
-    #panel-overlay.visible { display: block; }
+    
 
     /* =====================================================
        BARRA DI RICERCA
