@@ -2131,15 +2131,7 @@ function drawMarkers(overlay, rects, activeIdx = -1) {
     ctx.closePath();
     ctx.fill();
 
-    // Linea orizzontale sottile che parte dal triangolo
-    ctx.strokeStyle = color;
-    ctx.lineWidth   = isActive ? 2 : 1.5;
-    ctx.globalAlpha = isActive ? 0.9 : 0.55;
-    ctx.beginPath();
-    ctx.moveTo(2 + markerW, y);
-    ctx.lineTo(overlay.width - 4, y);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
+
   });
 }
 
