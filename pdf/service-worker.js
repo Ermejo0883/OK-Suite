@@ -1,6 +1,6 @@
 /* ============================================================
    OK Suite - PDF  |  Service Worker
-   Versione cache: oksuite-pdf-v9
+   Versione cache: oksuite-pdf-v10
    
    Strategia:
    - Cache-first  → file locali (index.html, manifest, sw, font)
@@ -8,7 +8,7 @@
    - Fallback offline per tutto il resto
 ============================================================ */
 
-const CACHE_NAME    = 'oksuite-pdf-v9';
+const CACHE_NAME    = 'oksuite-pdf-v10';
 const CACHE_RUNTIME = 'oksuite-pdf-runtime-v2';
 
 /* File locali da mettere subito in cache durante l'install */
