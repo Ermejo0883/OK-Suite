@@ -2059,65 +2059,71 @@ const search = {
   current:    -1,
 };
 
-/* ── Disegna highlight su un overlay canvas ── */
-function drawHighlights(overlay, rects, scale, activeIdx = -1) {
+/* ── Disegna highlight su un overlay canvas ──
+   rects: coordinate in spazio PDF (scala 1.0, origine bottom-left)
+   Il canvas overlay ha le stesse dimensioni del canvas PDF renderizzato,
+   quindi moltiplichiamo per renderScale e invertiamo Y.
+── */
+function drawHighlights(overlay, rects, renderScale, activeIdx = -1) {
   const ctx = overlay.getContext('2d');
   ctx.clearRect(0, 0, overlay.width, overlay.height);
   rects.forEach((r, i) => {
     const isActive = i === activeIdx;
-    ctx.fillStyle = isActive
-      ? 'rgba(255, 140, 0, 0.45)'   // arancione per il risultato corrente
-      : 'rgba(255, 220, 0, 0.30)';  // giallo per gli altri
-    ctx.strokeStyle = isActive ? 'rgba(255,100,0,0.8)' : 'rgba(200,160,0,0.5)';
-    ctx.lineWidth   = isActive ? 1.5 : 1;
+    ctx.fillStyle   = isActive ? 'rgba(255,140,0,0.45)' : 'rgba(255,220,0,0.30)';
+    ctx.strokeStyle = isActive ? 'rgba(220,80,0,0.9)'   : 'rgba(180,140,0,0.6)';
+    ctx.lineWidth   = isActive ? 2 : 1;
 
-    // Le coordinate PDF sono bottom-left, canvas è top-left → invertiamo y
-    const x = r.x * scale;
-    const y = overlay.height - (r.y + r.h) * scale;
-    const w = r.w * scale;
-    const h = r.h * scale;
+    // PDF: origine bottom-left  →  canvas: origine top-left
+    const cx = r.x * renderScale;
+    const cy = overlay.height - (r.y + r.h) * renderScale;
+    const cw = r.w  * renderScale;
+    const ch = r.h  * renderScale;
 
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeRect(x, y, w, h);
+    ctx.fillRect(cx, cy, cw, ch);
+    ctx.strokeRect(cx, cy, cw, ch);
   });
 }
 
-/* ── Cerca il testo e raccoglie le coordinate ── */
+/* ── Calcola renderScale per un wrapper già disegnato ── */
+function getRenderScale(wrapper) {
+  // Salvata come dataset durante il render
+  return parseFloat(wrapper.dataset.renderScale || '1');
+}
+
+/* ── Cerca il testo e raccoglie le coordinate in spazio PDF (scala 1.0) ── */
 async function searchInDocument(query) {
-  if (!state.pdfDoc || !query.trim()) {
-    clearSearch();
-    return;
-  }
+  if (!state.pdfDoc || !query.trim()) { clearSearch(); return; }
 
   clearHighlights();
-  search.query    = query.toLowerCase();
-  search.results  = [];   // [{page, rectIdx}]
-  search.highlights = {}; // {pageNum: [{x,y,w,h}, ...]}
-  search.current  = -1;
+  search.query      = query.toLowerCase();
+  search.results    = [];   // [{page, rectIdx}]
+  search.highlights = {};   // {pageNum: [{x,y,w,h} in PDF units]}
+  search.current    = -1;
 
   const resultCount = document.getElementById('search-count');
   resultCount.textContent = 'Ricerca…';
 
   for (let pageNum = 1; pageNum <= state.totalPages; pageNum++) {
     const page    = await state.pdfDoc.getPage(pageNum);
+    const vp1     = page.getViewport({ scale: 1.0 });
     const content = await page.getTextContent();
-    const vp      = page.getViewport({ scale: 1.0 });
 
-    // Cerca in ogni item di testo
     content.items.forEach(item => {
       if (!item.str) return;
-      const itemText = item.str.toLowerCase();
+      const lower = item.str.toLowerCase();
       let pos = 0;
-      while ((pos = itemText.indexOf(search.query, pos)) !== -1) {
-        // item.transform = [scaleX, 0, 0, scaleY, tx, ty]
-        const [sx, , , sy, tx, ty] = item.transform;
-        const charW = item.width / (item.str.length || 1);
+      while ((pos = lower.indexOf(search.query, pos)) !== -1) {
+        // transform: [scaleX, skew1, skew2, scaleY, tx, ty]
+        // tx,ty = posizione bottom-left del testo in unità PDF a scala 1.0
+        const [scaleX, , , scaleY, tx, ty] = item.transform;
+        const totalW  = Math.abs(item.width);             // larghezza totale item
+        const charW   = totalW / (item.str.length || 1);
+        const fontH   = Math.abs(scaleY);                 // altezza font
 
-        // Stima x basata sulla posizione del match
         const x = tx + charW * pos;
-        const y = ty;
+        const y = ty - fontH * 0.15;                      // leggero padding sotto
         const w = charW * search.query.length;
-        const h = Math.abs(sy) * 1.2; // altezza carattere + margine
+        const h = fontH * 1.3;
 
         if (!search.highlights[pageNum]) search.highlights[pageNum] = [];
         const rectIdx = search.highlights[pageNum].length;
@@ -2128,60 +2134,48 @@ async function searchInDocument(query) {
     });
   }
 
-  if (search.results.length === 0) {
+  if (!search.results.length) {
     resultCount.textContent = 'Nessun risultato';
     return;
   }
 
   search.current = 0;
   resultCount.textContent = `1 / ${search.results.length}`;
-  applyAllHighlights();
+  applyAllHighlights(-1, -1);   // disegna tutti in giallo
   navigateToResult(0);
 }
 
-/* ── Applica highlight su tutte le pagine già renderizzate ── */
-function applyAllHighlights() {
+/* ── Ridisegna tutti gli overlay (chiamata dopo zoom/re-render) ── */
+function applyAllHighlights(activePage = -1, activeRectIdx = -1) {
   const scroller = document.getElementById('pdf-scroller');
   if (!scroller) return;
   scroller.querySelectorAll('.pdf-page-wrapper').forEach(wrapper => {
     const pageNum = parseInt(wrapper.dataset.page, 10);
     if (!search.highlights[pageNum]) return;
     const overlay = wrapper.querySelector('.pdf-overlay');
-    const canvas  = wrapper.querySelector('.pdf-canvas');
-    if (!overlay || !canvas) return;
-    const scale = canvas.width / (search.highlights[pageNum].reduce((acc, r) => acc, canvas.width));
-    drawHighlights(overlay, search.highlights[pageNum], 1);
+    if (!overlay) return;
+    const rs = getRenderScale(wrapper);
+    const aIdx = pageNum === activePage ? activeRectIdx : -1;
+    drawHighlights(overlay, search.highlights[pageNum], rs, aIdx);
   });
 }
 
-/* ── Naviga a un risultato specifico evidenziandolo ── */
+/* ── Naviga al risultato idx, evidenziando il rettangolo corrente ── */
 function navigateToResult(idx) {
   if (!search.results.length) return;
   const { page: pageNum, rectIdx } = search.results[idx];
-
-  // Aggiorna tutti gli overlay — il risultato corrente ha colore diverso
-  const scroller = document.getElementById('pdf-scroller');
-  if (scroller) {
-    scroller.querySelectorAll('.pdf-page-wrapper').forEach(wrapper => {
-      const p = parseInt(wrapper.dataset.page, 10);
-      if (!search.highlights[p]) return;
-      const overlay = wrapper.querySelector('.pdf-overlay');
-      if (!overlay) return;
-      // Passa activeIdx solo per la pagina corrente
-      const activeIdx = p === pageNum ? rectIdx : -1;
-      drawHighlights(overlay, search.highlights[p], 1, activeIdx);
-    });
-  }
+  applyAllHighlights(pageNum, rectIdx);
   goToPage(pageNum);
 }
 
-/* ── Cancella tutti gli highlight ── */
+/* ── Pulisce tutti gli overlay ── */
 function clearHighlights() {
   const scroller = document.getElementById('pdf-scroller');
   if (!scroller) return;
-  scroller.querySelectorAll('.pdf-overlay').forEach(overlay => {
-    overlay.getContext('2d').clearRect(0, 0, overlay.width, overlay.height);
+  scroller.querySelectorAll('.pdf-overlay').forEach(ov => {
+    ov.getContext('2d').clearRect(0, 0, ov.width, ov.height);
   });
+  if (search) { search.highlights = {}; search.results = []; search.current = -1; }
 }
 
 function searchNext() {
