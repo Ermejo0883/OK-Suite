@@ -1336,7 +1336,7 @@
 const APP_CONFIG = {
   ADS_ENABLED: false,
   IS_PRO:      false,
-  APP_VERSION: '1.0.0',
+  APP_VERSION: '1.0.2',
   APP_NAME:    'OK Suite - PDF',
 };
 
@@ -1497,35 +1497,65 @@ async function renderPageIntoScroller(scroller, pageNum) {
   const scale    = calcScale(baseVP);
   const viewport = page.getViewport({ scale });
 
-  // Wrapper per ogni pagina (centrato, con ombra)
+  const W = Math.floor(viewport.width);
+  const H = Math.floor(viewport.height);
+
+  // Wrapper: position:relative per contenere l'overlay assoluto
   const wrapper = document.createElement('div');
   wrapper.className    = 'pdf-page-wrapper';
   wrapper.dataset.page = pageNum;
+  wrapper.dataset.renderScale = scale;
   wrapper.style.cssText = `
-    display: flex;
-    justify-content: center;
+    position: relative;
+    display: block;
     margin: 0 auto 12px;
-    width: fit-content;
-    max-width: 100%;
+    width: ${W}px;
+    height: ${H}px;
+    line-height: 0;
+    flex-shrink: 0;
   `;
 
+  // Canvas PDF
   const canvas = document.createElement('canvas');
-  canvas.width  = viewport.width;
-  canvas.height = viewport.height;
+  canvas.className = 'pdf-canvas';
+  canvas.width  = W;
+  canvas.height = H;
   canvas.style.cssText = `
     display: block;
+    width: ${W}px;
+    height: ${H}px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.5);
     background: white;
   `;
 
+  // Canvas overlay highlight — stesso size, sovrapposto
+  const overlay = document.createElement('canvas');
+  overlay.className = 'pdf-overlay';
+  overlay.width  = W;
+  overlay.height = H;
+  overlay.style.cssText = `
+    position: absolute;
+    top: 0; left: 0;
+    width: ${W}px;
+    height: ${H}px;
+    pointer-events: none;
+  `;
+
   wrapper.appendChild(canvas);
+  wrapper.appendChild(overlay);
   scroller.appendChild(wrapper);
 
   const ctx = canvas.getContext('2d');
   await page.render({ canvasContext: ctx, viewport }).promise;
 
-  // Salva scala effettiva dal primo render
   if (pageNum === 1) state.zoom = scale;
+
+  // Se c'e' una ricerca attiva, disegna gli highlight su questa pagina
+  if (search.query && search.highlights && search.highlights[pageNum]) {
+    const aResult = search.results[search.current] || {};
+    const aIdx = aResult.page === pageNum ? aResult.rectIdx : -1;
+    drawHighlights(overlay, search.highlights[pageNum], aIdx);
+  }
 }
 
 // Renderizza TUTTE le pagine in sequenza
@@ -2076,7 +2106,7 @@ const search = {
    Il canvas overlay ha le stesse dimensioni del canvas PDF renderizzato,
    quindi moltiplichiamo per renderScale e invertiamo Y.
 ── */
-function drawHighlights(overlay, rects, _unused, activeIdx = -1) {
+function drawHighlights(overlay, rects, activeIdx = -1) {
   // rects contengono già coordinate canvas (cx,cy,cw,ch) in pixel
   const ctx = overlay.getContext('2d');
   ctx.clearRect(0, 0, overlay.width, overlay.height);
@@ -2125,21 +2155,7 @@ async function searchInDocument(query) {
     // Quindi:  canvasX = pdfX * scale
     //          canvasY = vp.height - pdfY * scale   (asse Y invertito)
 
-    // DEBUG — logga i primi item della pagina 1
-    if (pageNum === 1 && content.items.length > 0) {
-      const sample = content.items.slice(0, 3);
-      sample.forEach((it, i) => {
-        console.log('[SEARCH DEBUG] item', i, JSON.stringify({
-          str: it.str,
-          transform: it.transform,
-          width: it.width,
-          height: it.height,
-        }));
-      });
-      console.log('[SEARCH DEBUG] viewport', { w: vp.width, h: vp.height, scale });
-    }
-
-    content.items.forEach(item => {
+content.items.forEach(item => {
       if (!item.str) return;
       const lower = item.str.toLowerCase();
       let pos = 0;
@@ -2159,8 +2175,7 @@ async function searchInDocument(query) {
         const rectIdx = search.highlights[pageNum].length;
         search.highlights[pageNum].push({ cx, cy, cw, ch });
         search.results.push({ page: pageNum, rectIdx });
-        console.log('[SEARCH DEBUG] match p.' + pageNum + ' "' + item.str + '" → cx=' + cx.toFixed(1) + ' cy=' + cy.toFixed(1) + ' cw=' + cw.toFixed(1) + ' ch=' + ch.toFixed(1) + ' | vp.h=' + vp.height.toFixed(0));
-        pos++;
+pos++;
       }
     });
   }
@@ -2172,7 +2187,7 @@ async function searchInDocument(query) {
 
   search.current = 0;
   resultCount.textContent = `1 / ${search.results.length}`;
-  applyAllHighlights(-1, -1);
+  applyAllHighlights();
   navigateToResult(0);
 }
 
@@ -2186,7 +2201,7 @@ function applyAllHighlights(activePage = -1, activeRectIdx = -1) {
     const overlay = wrapper.querySelector('.pdf-overlay');
     if (!overlay) return;
     const aIdx = pageNum === activePage ? activeRectIdx : -1;
-    drawHighlights(overlay, search.highlights[pageNum], 1, aIdx);
+    drawHighlights(overlay, search.highlights[pageNum], aIdx);
   });
 }
 
