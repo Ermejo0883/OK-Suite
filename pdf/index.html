@@ -2053,31 +2053,79 @@ async function initOutline() {
    CERCA NEL DOCUMENTO
 ===================================================== */
 const search = {
-  query:   '',
-  results: [],  // [{page, items}]
-  current: -1,
+  query:      '',
+  results:    [],   // [{page, rectIdx}]
+  highlights: {},   // {pageNum: [{x,y,w,h}]}
+  current:    -1,
 };
 
+/* ── Disegna highlight su un overlay canvas ── */
+function drawHighlights(overlay, rects, scale, activeIdx = -1) {
+  const ctx = overlay.getContext('2d');
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  rects.forEach((r, i) => {
+    const isActive = i === activeIdx;
+    ctx.fillStyle = isActive
+      ? 'rgba(255, 140, 0, 0.45)'   // arancione per il risultato corrente
+      : 'rgba(255, 220, 0, 0.30)';  // giallo per gli altri
+    ctx.strokeStyle = isActive ? 'rgba(255,100,0,0.8)' : 'rgba(200,160,0,0.5)';
+    ctx.lineWidth   = isActive ? 1.5 : 1;
+
+    // Le coordinate PDF sono bottom-left, canvas è top-left → invertiamo y
+    const x = r.x * scale;
+    const y = overlay.height - (r.y + r.h) * scale;
+    const w = r.w * scale;
+    const h = r.h * scale;
+
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
+  });
+}
+
+/* ── Cerca il testo e raccoglie le coordinate ── */
 async function searchInDocument(query) {
   if (!state.pdfDoc || !query.trim()) {
     clearSearch();
     return;
   }
 
-  search.query   = query.toLowerCase();
-  search.results = [];
-  search.current = -1;
+  clearHighlights();
+  search.query    = query.toLowerCase();
+  search.results  = [];   // [{page, rectIdx}]
+  search.highlights = {}; // {pageNum: [{x,y,w,h}, ...]}
+  search.current  = -1;
 
   const resultCount = document.getElementById('search-count');
   resultCount.textContent = 'Ricerca…';
 
-  for (let i = 1; i <= state.totalPages; i++) {
-    const page    = await state.pdfDoc.getPage(i);
+  for (let pageNum = 1; pageNum <= state.totalPages; pageNum++) {
+    const page    = await state.pdfDoc.getPage(pageNum);
     const content = await page.getTextContent();
-    const text    = content.items.map(it => it.str).join(' ').toLowerCase();
-    if (text.includes(search.query)) {
-      search.results.push(i);
-    }
+    const vp      = page.getViewport({ scale: 1.0 });
+
+    // Cerca in ogni item di testo
+    content.items.forEach(item => {
+      if (!item.str) return;
+      const itemText = item.str.toLowerCase();
+      let pos = 0;
+      while ((pos = itemText.indexOf(search.query, pos)) !== -1) {
+        // item.transform = [scaleX, 0, 0, scaleY, tx, ty]
+        const [sx, , , sy, tx, ty] = item.transform;
+        const charW = item.width / (item.str.length || 1);
+
+        // Stima x basata sulla posizione del match
+        const x = tx + charW * pos;
+        const y = ty;
+        const w = charW * search.query.length;
+        const h = Math.abs(sy) * 1.2; // altezza carattere + margine
+
+        if (!search.highlights[pageNum]) search.highlights[pageNum] = [];
+        const rectIdx = search.highlights[pageNum].length;
+        search.highlights[pageNum].push({ x, y, w, h });
+        search.results.push({ page: pageNum, rectIdx });
+        pos++;
+      }
+    });
   }
 
   if (search.results.length === 0) {
@@ -2087,7 +2135,53 @@ async function searchInDocument(query) {
 
   search.current = 0;
   resultCount.textContent = `1 / ${search.results.length}`;
-  goToPage(search.results[0]);
+  applyAllHighlights();
+  navigateToResult(0);
+}
+
+/* ── Applica highlight su tutte le pagine già renderizzate ── */
+function applyAllHighlights() {
+  const scroller = document.getElementById('pdf-scroller');
+  if (!scroller) return;
+  scroller.querySelectorAll('.pdf-page-wrapper').forEach(wrapper => {
+    const pageNum = parseInt(wrapper.dataset.page, 10);
+    if (!search.highlights[pageNum]) return;
+    const overlay = wrapper.querySelector('.pdf-overlay');
+    const canvas  = wrapper.querySelector('.pdf-canvas');
+    if (!overlay || !canvas) return;
+    const scale = canvas.width / (search.highlights[pageNum].reduce((acc, r) => acc, canvas.width));
+    drawHighlights(overlay, search.highlights[pageNum], 1);
+  });
+}
+
+/* ── Naviga a un risultato specifico evidenziandolo ── */
+function navigateToResult(idx) {
+  if (!search.results.length) return;
+  const { page: pageNum, rectIdx } = search.results[idx];
+
+  // Aggiorna tutti gli overlay — il risultato corrente ha colore diverso
+  const scroller = document.getElementById('pdf-scroller');
+  if (scroller) {
+    scroller.querySelectorAll('.pdf-page-wrapper').forEach(wrapper => {
+      const p = parseInt(wrapper.dataset.page, 10);
+      if (!search.highlights[p]) return;
+      const overlay = wrapper.querySelector('.pdf-overlay');
+      if (!overlay) return;
+      // Passa activeIdx solo per la pagina corrente
+      const activeIdx = p === pageNum ? rectIdx : -1;
+      drawHighlights(overlay, search.highlights[p], 1, activeIdx);
+    });
+  }
+  goToPage(pageNum);
+}
+
+/* ── Cancella tutti gli highlight ── */
+function clearHighlights() {
+  const scroller = document.getElementById('pdf-scroller');
+  if (!scroller) return;
+  scroller.querySelectorAll('.pdf-overlay').forEach(overlay => {
+    overlay.getContext('2d').clearRect(0, 0, overlay.width, overlay.height);
+  });
 }
 
 function searchNext() {
@@ -2095,7 +2189,7 @@ function searchNext() {
   search.current = (search.current + 1) % search.results.length;
   document.getElementById('search-count').textContent =
     `${search.current + 1} / ${search.results.length}`;
-  goToPage(search.results[search.current]);
+  navigateToResult(search.current);
 }
 
 function searchPrev() {
@@ -2103,13 +2197,15 @@ function searchPrev() {
   search.current = (search.current - 1 + search.results.length) % search.results.length;
   document.getElementById('search-count').textContent =
     `${search.current + 1} / ${search.results.length}`;
-  goToPage(search.results[search.current]);
+  navigateToResult(search.current);
 }
 
 function clearSearch() {
-  search.query   = '';
-  search.results = [];
-  search.current = -1;
+  search.query      = '';
+  search.results    = [];
+  search.highlights = {};
+  search.current    = -1;
+  clearHighlights();
   const input = document.getElementById('search-input');
   const count = document.getElementById('search-count');
   if (input) input.value = '';
@@ -2494,7 +2590,7 @@ function initEvents() {
   // Toolbar
   dom.btnPrint.addEventListener('click', printDocument);
   dom.btnShare.addEventListener('click', shareDocument);
-  dom.btnClose.addEventListener('click', () => { stopReading(); resetState(); updateUI(); showToast('Documento chiuso', 'info'); });
+  dom.btnClose.addEventListener('click', () => { stopReading(); clearSearch(); resetState(); updateUI(); showToast('Documento chiuso', 'info'); });
 
   // Navigazione pagine (scroll to page)
   dom.btnPrev.addEventListener('click', () => goToPage(state.currentPage - 1));
