@@ -810,6 +810,14 @@
     .info-row:last-child { border-bottom: none; }
     .info-key { color: var(--text-dim); min-width: 90px; flex-shrink: 0; }
     .info-val { color: var(--text); }
+    .btn-install-pwa {
+      background: var(--accent); color: #fff;
+      border: none; border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+      padding: 6px 14px; cursor: pointer; transition: opacity .15s;
+      white-space: nowrap;
+    }
+    .btn-install-pwa:hover { opacity: .85; }
 
   </style>
 </head>
@@ -1045,6 +1053,16 @@
               <option value="es-ES">Español</option>
             </select>
           </div>
+
+          <!-- Installa PWA -->
+          <div class="settings-row" id="row-install-pwa" style="display:none">
+            <div class="settings-label">
+              <span>Installa app</span>
+              <span class="settings-hint">Aggiungi OK Suite PDF alla schermata home</span>
+            </div>
+            <button class="btn-install-pwa" id="btn-pwa-install-settings">Installa</button>
+          </div>
+
         </div>
 
         <!-- ── CRONOLOGIA ── -->
@@ -1103,6 +1121,16 @@
             <span class="info-val">© 2026 Angelo Martella. Tutti i diritti riservati.</span>
           </div>
         </div>
+
+      <!-- Pulsante chiudi in fondo -->
+      <div style="padding: 12px 16px; flex-shrink:0; border-top: 1px solid var(--border);">
+        <button id="btn-settings-close-bottom" style="
+          width:100%; padding:10px; background:var(--surface2);
+          border:1px solid var(--border); border-radius:var(--radius-sm);
+          color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px;
+          cursor:pointer; transition:background .15s;
+        ">Chiudi impostazioni</button>
+      </div>
 
       </div><!-- /.settings-body -->
     </div><!-- /#settings-panel -->
@@ -2337,9 +2365,14 @@ function closeSettings() {
 }
 
 function initSettingsEvents() {
-  document.getElementById('btn-settings').addEventListener('click', openSettings);
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    const panel = document.getElementById('settings-panel');
+    if (panel.classList.contains('open')) closeSettings();
+    else openSettings();
+  });
   document.getElementById('btn-settings-close').addEventListener('click', closeSettings);
   document.getElementById('settings-overlay').addEventListener('click', closeSettings);
+  document.getElementById('btn-settings-close-bottom')?.addEventListener('click', closeSettings);
 
   // Live save on any change
   ['set-zoom-default', 'set-tts-lang'].forEach(id => {
@@ -2609,6 +2642,9 @@ document.readyState === 'loading'
   // L'evento beforeinstallprompt viene emesso dal browser quando la PWA
   // soddisfa i criteri di installabilità (manifest + HTTPS + SW registrato)
   window.addEventListener('beforeinstallprompt', e => {
+    // Mostra riga "Installa" nel pannello impostazioni
+    const row = document.getElementById('row-install-pwa');
+    if (row) row.style.display = 'flex';
     e.preventDefault();           // Impedisce il prompt automatico del browser
     deferredPrompt = e;           // Salva l'evento per usarlo più tardi
     banner.classList.remove('hidden');
