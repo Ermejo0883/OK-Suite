@@ -826,6 +826,15 @@
         </button>
 
       </div><!-- /#doc-tools -->
+
+      <!-- Settings — sempre visibile, a destra -->
+      <div style="flex:1"></div>
+      <button class="btn-icon" id="btn-settings" title="Impostazioni" aria-label="Impostazioni">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -846,6 +855,146 @@
       </div>
       <ul id="outline-list" class="outline-list"></ul>
     </div>
+
+    <!-- Overlay per chiudere pannelli cliccando fuori -->
+    <div id="settings-overlay" class="settings-overlay" style="display:none"></div>
+
+    <!-- Pannello Impostazioni -->
+    <div id="settings-panel" class="settings-panel">
+
+      <!-- Header -->
+      <div class="settings-header">
+        <span>Impostazioni</span>
+        <button class="btn-icon" id="btn-settings-close" aria-label="Chiudi impostazioni">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="settings-body">
+
+        <!-- ── IMPOSTAZIONI ── -->
+        <div class="settings-section">
+          <div class="settings-section-title">Impostazioni</div>
+
+          <!-- Zoom default -->
+          <div class="settings-row">
+            <div class="settings-label">
+              <span>Zoom iniziale</span>
+              <span class="settings-hint">Alla apertura del documento</span>
+            </div>
+            <select id="set-zoom-default" class="settings-select">
+              <option value="auto">Automatico (adatta larghezza)</option>
+              <option value="0.5">50%</option>
+              <option value="0.75">75%</option>
+              <option value="1.0">100%</option>
+              <option value="1.25">125%</option>
+              <option value="1.5">150%</option>
+              <option value="2.0">200%</option>
+            </select>
+          </div>
+
+          <!-- Anteprime all'avvio -->
+          <div class="settings-row">
+            <div class="settings-label">
+              <span>Pannello anteprime</span>
+              <span class="settings-hint">Aperto automaticamente all'apertura del file</span>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="set-thumbs-open" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <!-- Sommario all'avvio -->
+          <div class="settings-row">
+            <div class="settings-label">
+              <span>Pannello sommario</span>
+              <span class="settings-hint">Aperto automaticamente all'apertura del file</span>
+            </div>
+            <label class="settings-toggle">
+              <input type="checkbox" id="set-outline-open" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+
+          <!-- Lingua TTS -->
+          <div class="settings-row">
+            <div class="settings-label">
+              <span>Lingua lettura voce</span>
+              <span class="settings-hint">Lingua usata per "Leggi ad alta voce"</span>
+            </div>
+            <select id="set-tts-lang" class="settings-select">
+              <option value="it-IT">Italiano</option>
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="fr-FR">Français</option>
+              <option value="de-DE">Deutsch</option>
+              <option value="es-ES">Español</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ── CRONOLOGIA ── -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <span>Cronologia file recenti</span>
+            <button class="settings-clear-btn" id="btn-clear-history">Cancella</button>
+          </div>
+          <div id="history-list" class="history-list">
+            <div class="history-empty">Nessun file aperto di recente</div>
+          </div>
+        </div>
+
+        <!-- ── OK SUITE ── -->
+        <div class="settings-section">
+          <div class="settings-section-title">Scopri OK Suite</div>
+          <div class="suite-grid">
+            <div class="suite-app">
+              <div class="suite-badge" style="background:#E53935">PDF</div>
+              <span class="suite-name">OK PDF</span>
+              <span class="suite-status current">Questa app</span>
+            </div>
+            <div class="suite-app">
+              <div class="suite-badge" style="background:#1565C0">WORD</div>
+              <span class="suite-name">OK Word</span>
+              <span class="suite-status soon">Prossimamente</span>
+            </div>
+            <div class="suite-app">
+              <div class="suite-badge" style="background:#2E7D32">XLS</div>
+              <span class="suite-name">OK Excel</span>
+              <span class="suite-status soon">Prossimamente</span>
+            </div>
+            <div class="suite-app">
+              <div class="suite-badge" style="background:#E65100">PPT</div>
+              <span class="suite-name">OK PPT</span>
+              <span class="suite-status soon">Prossimamente</span>
+            </div>
+            <div class="suite-app">
+              <div class="suite-badge" style="background:#6A1B9A">2FA</div>
+              <span class="suite-name">OK 2FA</span>
+              <span class="suite-status idea">Idea futura</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── INFORMAZIONI ── -->
+        <div class="settings-section">
+          <div class="settings-section-title">Informazioni</div>
+          <div class="info-row"><span class="info-key">App</span><span class="info-val">OK Suite — PDF</span></div>
+          <div class="info-row"><span class="info-key">Versione</span><span class="info-val">1.0.0</span></div>
+          <div class="info-row"><span class="info-key">Sviluppatore</span><span class="info-val">Angelo Martella · TakeItEasy</span></div>
+          <div class="info-row"><span class="info-key">Viewer</span><span class="info-val">PDF.js (Mozilla)</span></div>
+          <div class="info-row"><span class="info-key">Piattaforma</span><span class="info-val">PWA · TWA · Android</span></div>
+          <div class="info-row" style="margin-top:8px">
+            <span class="info-key">Licenza</span>
+            <span class="info-val">© 2026 Angelo Martella. Tutti i diritti riservati.</span>
+          </div>
+        </div>
+
+      </div><!-- /.settings-body -->
+    </div><!-- /#settings-panel -->
 
     <!-- Pannello Anteprime -->
     <div id="thumbs-panel" class="side-panel">
@@ -1340,17 +1489,29 @@ async function openPdfFile(file) {
   state.pdfUrl     = URL.createObjectURL(file);
   state.totalPages = 0;
   state.currentPage = 1;
-  state.zoom       = 1.0;
-  state.zoomLocked = false;
+  // Applica zoom default dalle impostazioni
+  const _s = loadSettings();
+  if (_s.zoomDefault !== 'auto') {
+    state.zoom       = parseFloat(_s.zoomDefault);
+    state.zoomLocked = true;
+  } else {
+    state.zoom       = 1.0;
+    state.zoomLocked = false;
+  }
   state.pdfDoc     = null;
 
   showLoading(`Apertura: ${file.name}`);
   dom.placeholder.classList.add('hidden');
+  addToHistory(file);
 
   try {
     state.pdfDoc     = await pdfjsLib.getDocument({ url: state.pdfUrl }).promise;
     state.totalPages = state.pdfDoc.numPages;
     await renderAllPages();
+    // Auto-apri pannelli se impostato
+    const _cfg = loadSettings();
+    if (_cfg.thumbsOpen)  togglePanel('thumbs');
+    if (_cfg.outlineOpen) togglePanel('outline');
   } catch(err) {
     hideLoading();
     console.error('[OK PDF] Errore apertura:', err);
@@ -1869,7 +2030,7 @@ async function startReading() {
 
     await new Promise(resolve => {
       const utt = new SpeechSynthesisUtterance(text);
-      utt.lang  = 'it-IT';
+      utt.lang  = loadSettings().ttsLang || 'it-IT';
       utt.rate  = 1.0;
       utt.onend = resolve;
       utt.onerror = resolve;
@@ -2015,6 +2176,137 @@ function togglePanel(name) {
 }
 
 /* =====================================================
+   IMPOSTAZIONI — localStorage persistence
+===================================================== */
+const SETTINGS_KEY  = 'oksuite_pdf_settings';
+const HISTORY_KEY   = 'oksuite_pdf_history';
+const MAX_HISTORY   = 10;
+
+const defaultSettings = {
+  zoomDefault:  'auto',
+  thumbsOpen:   false,
+  outlineOpen:  false,
+  ttsLang:      'it-IT',
+};
+
+function loadSettings() {
+  try {
+    return { ...defaultSettings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
+  } catch(e) { return { ...defaultSettings }; }
+}
+
+function saveSettings(s) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch(e) {}
+}
+
+function applySettingsToUI(s) {
+  const zoomSel    = document.getElementById('set-zoom-default');
+  const thumbsCk   = document.getElementById('set-thumbs-open');
+  const outlineCk  = document.getElementById('set-outline-open');
+  const ttsSel     = document.getElementById('set-tts-lang');
+  if (zoomSel)   zoomSel.value   = s.zoomDefault;
+  if (thumbsCk)  thumbsCk.checked  = s.thumbsOpen;
+  if (outlineCk) outlineCk.checked = s.outlineOpen;
+  if (ttsSel)    ttsSel.value    = s.ttsLang;
+}
+
+function openSettings() {
+  const panel   = document.getElementById('settings-panel');
+  const overlay = document.getElementById('settings-overlay');
+  const s = loadSettings();
+  applySettingsToUI(s);
+  renderHistory();
+  panel.classList.add('open');
+  overlay.style.display = 'block';
+}
+
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('settings-overlay').style.display = 'none';
+}
+
+function initSettingsEvents() {
+  document.getElementById('btn-settings').addEventListener('click', openSettings);
+  document.getElementById('btn-settings-close').addEventListener('click', closeSettings);
+  document.getElementById('settings-overlay').addEventListener('click', closeSettings);
+
+  // Live save on any change
+  ['set-zoom-default', 'set-tts-lang'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', saveAllSettings);
+  });
+  ['set-thumbs-open', 'set-outline-open'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', saveAllSettings);
+  });
+
+  document.getElementById('btn-clear-history')?.addEventListener('click', () => {
+    try { localStorage.removeItem(HISTORY_KEY); } catch(e) {}
+    renderHistory();
+    showToast('Cronologia cancellata', 'info', 2000);
+  });
+}
+
+function saveAllSettings() {
+  const s = {
+    zoomDefault:  document.getElementById('set-zoom-default')?.value  || 'auto',
+    thumbsOpen:   document.getElementById('set-thumbs-open')?.checked  || false,
+    outlineOpen:  document.getElementById('set-outline-open')?.checked || false,
+    ttsLang:      document.getElementById('set-tts-lang')?.value      || 'it-IT',
+  };
+  saveSettings(s);
+}
+
+/* =====================================================
+   CRONOLOGIA FILE
+===================================================== */
+function addToHistory(file) {
+  try {
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    // Rimuovi duplicati per nome
+    const filtered = history.filter(h => h.name !== file.name);
+    const entry = {
+      name: file.name,
+      size: file.size,
+      date: new Date().toISOString(),
+    };
+    filtered.unshift(entry);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered.slice(0, MAX_HISTORY)));
+  } catch(e) {}
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!list) return;
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(e) {}
+
+  if (!history.length) {
+    list.innerHTML = '<div class="history-empty">Nessun file aperto di recente</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  history.forEach(entry => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+
+    const date = new Date(entry.date);
+    const dateStr = date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    const sizeStr = entry.size > 1024*1024
+      ? `${(entry.size/1024/1024).toFixed(1)} MB`
+      : `${(entry.size/1024).toFixed(0)} KB`;
+
+    item.innerHTML = `
+      <div class="history-icon">PDF</div>
+      <div class="history-info">
+        <div class="history-name" title="${entry.name}">${entry.name}</div>
+        <div class="history-meta">${dateStr} · ${sizeStr}</div>
+      </div>`;
+
+    list.appendChild(item);
+  });
+}
+
+/* =====================================================
    DRAG & DROP
 ===================================================== */
 function initDragDrop() {
@@ -2140,6 +2432,7 @@ function initApp() {
   console.log(`[OK PDF] ${APP_CONFIG.APP_NAME} v${APP_CONFIG.APP_VERSION}`);
   initDragDrop();
   initEvents();
+  initSettingsEvents();
   initAdMob();
   initBilling();
   updateUI();
@@ -2187,8 +2480,118 @@ document.readyState === 'loading'
   });
 })();
 
-/* =====================================================
-   PWA INSTALL BANNER — beforeinstallprompt
+    /* =====================================================
+       SETTINGS PANEL
+    ===================================================== */
+    .settings-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 98;
+    }
+
+    .settings-panel {
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+      width: 340px;
+      max-width: 100vw;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      z-index: 99;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(.4,0,.2,1);
+      box-shadow: -4px 0 24px rgba(0,0,0,0.4);
+    }
+    .settings-panel.open { transform: translateX(0); }
+
+    .settings-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; font-size: 15px; font-weight: 700;
+      color: var(--text); border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .settings-body { flex: 1; overflow-y: auto; padding: 8px 0 24px; }
+    .settings-section { padding: 16px 16px 8px; border-bottom: 1px solid var(--border); }
+    .settings-section:last-child { border-bottom: none; }
+    .settings-section-title {
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--text); flex: 1; }
+    .settings-hint { font-size: 11px; color: var(--text-dim); font-weight: 400; }
+    .settings-select {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 5px 8px;
+      border-radius: var(--radius-sm); outline: none; min-width: 130px; cursor: pointer;
+    }
+    .settings-select:focus { border-color: var(--accent); }
+    .settings-toggle { cursor: pointer; flex-shrink: 0; }
+    .settings-toggle input { display: none; }
+    .toggle-track {
+      display: flex; align-items: center; width: 42px; height: 24px;
+      background: var(--surface2); border-radius: 12px; border: 1px solid var(--border);
+      transition: background .2s, border-color .2s; padding: 2px;
+    }
+    .settings-toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+    .toggle-thumb {
+      width: 18px; height: 18px; background: #fff; border-radius: 50%;
+      transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .settings-toggle input:checked + .toggle-track .toggle-thumb { transform: translateX(18px); }
+    .settings-clear-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-dim);
+      font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 3px 8px;
+      border-radius: var(--radius-sm); cursor: pointer; transition: background .12s, color .12s;
+    }
+    .settings-clear-btn:hover { background: var(--surface2); color: var(--text); }
+    .history-list { display: flex; flex-direction: column; gap: 4px; }
+    .history-empty { font-size: 12px; color: var(--text-dim); text-align: center; padding: 12px 0; font-style: italic; }
+    .history-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 6px;
+      border-radius: var(--radius-sm); cursor: pointer; transition: background .12s;
+    }
+    .history-item:hover { background: var(--surface2); }
+    .history-icon {
+      width: 28px; height: 28px; background: var(--accent-dim); border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: var(--accent); flex-shrink: 0;
+    }
+    .history-info { flex: 1; overflow: hidden; }
+    .history-name { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-meta { font-size: 10px; color: var(--text-dim); }
+    .suite-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .suite-app {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 10px 6px; border-radius: var(--radius-sm); background: var(--surface2);
+    }
+    .suite-badge {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff;
+    }
+    .suite-name { font-size: 11px; color: var(--text); font-weight: 600; }
+    .suite-status { font-size: 10px; }
+    .suite-status.current { color: var(--accent); }
+    .suite-status.soon    { color: var(--text-dim); }
+    .suite-status.idea    { color: #9C27B0; }
+    .info-row {
+      display: flex; gap: 12px; padding: 5px 0; font-size: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { color: var(--text-dim); min-width: 90px; flex-shrink: 0; }
+    .info-val { color: var(--text); }
+
+    /* =====================================================
+       PWA INSTALL BANNER — beforeinstallprompt
 ===================================================== */
 (function initPwaBanner() {
   let deferredPrompt = null;
