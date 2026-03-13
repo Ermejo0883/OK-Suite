@@ -61,6 +61,23 @@
       --admob-h:      0px;   /* Step 6: diventa 60px */
     }
 
+    /* ── Tema chiaro ── */
+    [data-theme="light"] #pdf-scroller { background: #909090 !important; }
+    [data-theme="light"] {
+      --bg:           #f0f2f5;
+      --surface:      #ffffff;
+      --surface2:     #e8eaed;
+      --border:       #d0d5dd;
+      --accent:       #2563eb;
+      --accent-dim:   #1d4ed8;
+      --badge-pdf:    #e53935;
+      --text:         #1a1d2e;
+      --text-dim:     #6b7280;
+      --success:      #16a34a;
+      --warning:      #d97706;
+      --danger:       #dc2626;
+    }
+
     html, body {
       height: 100%;
       font-family: 'DM Sans', system-ui, sans-serif;
@@ -1042,6 +1059,18 @@
             </select>
           </div>
 
+          <!-- Tema -->
+          <div class="settings-row">
+            <div class="settings-label">
+              <span>Tema</span>
+              <span class="settings-hint">Scegli tra tema scuro e tema chiaro</span>
+            </div>
+            <select id="set-theme" class="settings-select">
+              <option value="dark">🌙 Scuro</option>
+              <option value="light">☀️ Chiaro</option>
+            </select>
+          </div>
+
           <!-- Installa PWA -->
           <div class="settings-row" id="row-install-pwa" style="display:none">
             <div class="settings-label">
@@ -1269,7 +1298,7 @@
 const APP_CONFIG = {
   ADS_ENABLED: false,
   IS_PRO:      false,
-  APP_VERSION: '1.1.1',
+  APP_VERSION: '1.1.2',
   APP_NAME:    'OK Suite - PDF',
 };
 
@@ -2464,6 +2493,7 @@ const defaultSettings = {
   zoomDefault:  'auto',
   panelOpen:    'none',   // 'none' | 'outline' | 'thumbs'
   ttsLang:      'it-IT',
+  theme:        'dark',   // 'dark' | 'light'
 };
 
 function loadSettings() {
@@ -2477,12 +2507,14 @@ function saveSettings(s) {
 }
 
 function applySettingsToUI(s) {
-  const zoomSel  = document.getElementById('set-zoom-default');
-  const panelSel = document.getElementById('set-panel-open');
-  const ttsSel   = document.getElementById('set-tts-lang');
+  const zoomSel   = document.getElementById('set-zoom-default');
+  const panelSel  = document.getElementById('set-panel-open');
+  const ttsSel    = document.getElementById('set-tts-lang');
+  const themeSel  = document.getElementById('set-theme');
   if (zoomSel)  zoomSel.value  = s.zoomDefault;
   if (panelSel) panelSel.value = s.panelOpen || 'none';
   if (ttsSel)   ttsSel.value   = s.ttsLang;
+  if (themeSel) themeSel.value = s.theme || 'dark';
 }
 
 function openSettings() {
@@ -2500,6 +2532,14 @@ function closeSettings() {
   document.getElementById('settings-overlay').style.display = 'none';
 }
 
+
+/* ── Tema chiaro/scuro ── */
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : '');
+  // Aggiorna icona pulsante toggle
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.textContent = theme === 'light' ? '🌙' : '☀️';
+}
 function initSettingsEvents() {
   document.getElementById('btn-settings').addEventListener('click', () => {
     const panel = document.getElementById('settings-panel');
@@ -2511,7 +2551,7 @@ function initSettingsEvents() {
   document.getElementById('btn-settings-close-bottom')?.addEventListener('click', closeSettings);
 
   // Live save on any change
-  ['set-zoom-default', 'set-tts-lang', 'set-panel-open'].forEach(id => {
+  ['set-zoom-default', 'set-tts-lang', 'set-panel-open', 'set-theme'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', saveAllSettings);
   });
 
@@ -2523,12 +2563,15 @@ function initSettingsEvents() {
 }
 
 function saveAllSettings() {
+  const theme = document.getElementById('set-theme')?.value || 'dark';
   const s = {
     zoomDefault: document.getElementById('set-zoom-default')?.value || 'auto',
     panelOpen:   document.getElementById('set-panel-open')?.value   || 'none',
     ttsLang:     document.getElementById('set-tts-lang')?.value     || 'it-IT',
+    theme,
   };
   saveSettings(s);
+  applyTheme(theme);
 }
 
 /* =====================================================
@@ -2711,6 +2754,7 @@ function initApp() {
   initDragDrop();
   initEvents();
   initSettingsEvents();
+  applyTheme(loadSettings().theme || 'dark');
   initAdMob();
   initBilling();
   updateUI();
