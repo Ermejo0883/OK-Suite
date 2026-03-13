@@ -678,7 +678,9 @@
 
     <!-- Azioni -->
     <div class="toolbar-actions">
-      <button class="btn-icon primary" id="btn-open"  title="Apri PDF"    aria-label="Apri file PDF">
+
+      <!-- Apri — sempre visibile -->
+      <button class="btn-icon primary" id="btn-open" title="Apri PDF" aria-label="Apri file PDF">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
@@ -687,111 +689,81 @@
         </svg>
       </button>
 
-      <div class="toolbar-sep"></div>
+      <!-- Gruppo visibile solo con documento aperto -->
+      <div id="doc-tools" style="display:none; align-items:center; gap:2px;">
 
-      <button class="btn-icon" id="btn-print" title="Stampa"    aria-label="Stampa documento"    disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 6 2 18 2 18 9"/>
-          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-          <rect x="6" y="14" width="12" height="8"/>
-        </svg>
-      </button>
+        <div class="toolbar-sep"></div>
 
-      <button class="btn-icon" id="btn-share" title="Condividi" aria-label="Condividi documento" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="18" cy="5"  r="3"/>
-          <circle cx="6"  cy="12" r="3"/>
-          <circle cx="18" cy="19" r="3"/>
-          <line x1="8.59"  y1="13.51" x2="15.42" y2="17.49"/>
-          <line x1="15.41" y1="6.51"  x2="8.59"  y2="10.49"/>
-        </svg>
-      </button>
+        <button class="btn-icon" id="btn-print" title="Stampa" aria-label="Stampa documento">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+        </button>
 
-      <div class="toolbar-sep"></div>
+        <button class="btn-icon" id="btn-share" title="Condividi" aria-label="Condividi documento">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5"  r="3"/>
+            <circle cx="6"  cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59"  y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51"  x2="8.59"  y2="10.49"/>
+          </svg>
+        </button>
 
-      <!-- Sommario -->
-      <button class="btn-icon" id="btn-outline" title="Sommario" aria-label="Apri sommario" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="8" y1="6"  x2="21" y2="6"/>
-          <line x1="8" y1="12" x2="21" y2="12"/>
-          <line x1="8" y1="18" x2="21" y2="18"/>
-          <line x1="3" y1="6"  x2="3.01" y2="6"/>
-          <line x1="3" y1="12" x2="3.01" y2="12"/>
-          <line x1="3" y1="18" x2="3.01" y2="18"/>
-        </svg>
-      </button>
+        <div class="toolbar-sep"></div>
 
-      <!-- Cerca -->
-      <button class="btn-icon" id="btn-search-toggle" title="Cerca nel documento" aria-label="Cerca" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-      </button>
+        <!-- Sommario -->
+        <button class="btn-icon" id="btn-outline" title="Sommario" aria-label="Sommario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6"  x2="21" y2="6"/>
+            <line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6"  x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </button>
 
-      <!-- Adatta -->
-      <button class="btn-icon" id="btn-fit" title="Adatta larghezza" aria-label="Adatta larghezza" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 3 21 3 21 9"/>
-          <polyline points="9 21 3 21 3 15"/>
-          <line x1="21" y1="3" x2="14" y2="10"/>
-          <line x1="3" y1="21" x2="10" y2="14"/>
-        </svg>
-      </button>
+        <!-- Cerca -->
+        <button class="btn-icon" id="btn-search" title="Cerca nel documento" aria-label="Cerca">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
 
-      <!-- Leggi ad alta voce -->
-      <button class="btn-icon" id="btn-tts" title="Leggi ad alta voce" aria-label="Leggi ad alta voce" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-        </svg>
-      </button>
+        <!-- Adatta -->
+        <button class="btn-icon" id="btn-fit" title="Adatta larghezza" aria-label="Adatta larghezza">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"/>
+            <polyline points="9 21 3 21 3 15"/>
+            <line x1="21" y1="3" x2="14" y2="10"/>
+            <line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+        </button>
 
-      <div class="toolbar-sep" id="sep-close" style="display:none"></div>
+        <!-- Leggi ad alta voce -->
+        <button class="btn-icon" id="btn-tts" title="Leggi ad alta voce" aria-label="Leggi ad alta voce">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+        </button>
 
-      <button class="btn-icon danger-icon" id="btn-close" title="Chiudi documento" aria-label="Chiudi documento" style="display:none">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6"  x2="6"  y2="18"/>
-          <line x1="6"  y1="6"  x2="18" y2="18"/>
-        </svg>
-      </button>
+        <div class="toolbar-sep"></div>
 
-      <div class="toolbar-sep"></div>
+        <!-- Chiudi — sempre ultimo a destra -->
+        <button class="btn-icon danger-icon" id="btn-close" title="Chiudi documento" aria-label="Chiudi documento">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6"  x2="6"  y2="18"/>
+            <line x1="6"  y1="6"  x2="18" y2="18"/>
+          </svg>
+        </button>
 
-      <!-- Sommario -->
-      <button class="btn-icon" id="btn-outline" title="Sommario" aria-label="Mostra sommario" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="3" y1="6"  x2="21" y2="6"/>
-          <line x1="3" y1="12" x2="15" y2="12"/>
-          <line x1="3" y1="18" x2="18" y2="18"/>
-        </svg>
-      </button>
-
-      <!-- Cerca -->
-      <button class="btn-icon" id="btn-search" title="Cerca nel documento" aria-label="Cerca nel documento" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-      </button>
-
-      <!-- Adatta -->
-      <button class="btn-icon" id="btn-fit" title="Adatta larghezza" aria-label="Adatta larghezza" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
-          <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
-        </svg>
-      </button>
-
-      <!-- Leggi ad alta voce -->
-      <button class="btn-icon" id="btn-tts" title="Leggi ad alta voce" aria-label="Leggi ad alta voce" disabled>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-        </svg>
-      </button>
+      </div><!-- /#doc-tools -->
     </div>
   </header>
 
@@ -1035,7 +1007,6 @@ const dom = {
   btnPrint:       $('btn-print'),
   btnShare:       $('btn-share'),
   btnClose:       $('btn-close'),
-  sepClose:       $('sep-close'),
   btnPrev:        $('btn-prev'),
   btnNext:        $('btn-next'),
   btnZoomIn:      $('btn-zoom-in'),
@@ -1081,22 +1052,17 @@ function hideLoading() {
 function updateUI() {
   const has = state.totalPages > 0;
   dom.placeholder.classList.toggle('hidden', has);
-  dom.btnPrint.disabled   = !has;
-  dom.btnShare.disabled   = !has;
   dom.btnPrev.disabled    = !has || state.currentPage <= 1;
   dom.btnNext.disabled    = !has || state.currentPage >= state.totalPages;
   dom.btnZoomIn.disabled  = !has;
   dom.btnZoomOut.disabled = !has;
-  dom.btnOutline.disabled = !has;
-  dom.btnSearch.disabled  = !has;
-  dom.btnFit.disabled     = !has;
-  dom.btnTts.disabled     = !has;
   dom.pageInput.disabled  = !has;
   dom.pageInput.value     = has ? state.currentPage : 1;
   dom.totalPages.textContent    = has ? state.totalPages : '—';
   dom.zoomIndicator.textContent = has ? `${Math.round(state.zoom * 100)}%` : '—%';
-  dom.btnClose.style.display = has ? 'flex'  : 'none';
-  dom.sepClose.style.display = has ? 'block' : 'none';
+  // Mostra/nascondi tutti i tool di documento insieme
+  const docTools = document.getElementById('doc-tools');
+  if (docTools) docTools.style.display = has ? 'flex' : 'none';
 
   if (has && state.pdfFile) {
     dom.docTitle.textContent    = state.pdfFile.name;
@@ -1658,6 +1624,7 @@ async function initOutline() {
   list.innerHTML = '';
 
   if (!outline || outline.length === 0) {
+    console.log('[Outline] Nessun outline nel documento');
     list.innerHTML = '<li class="outline-empty">Nessun sommario disponibile</li>';
     return;
   }
@@ -1678,11 +1645,15 @@ async function initOutline() {
         try {
           let dest = item.dest;
           if (typeof dest === 'string') dest = await state.pdfDoc.getDestination(dest);
-          if (!dest) return;
-          const ref     = dest[0];
-          const pageIdx = await state.pdfDoc.getPageIndex(ref);
+          if (!dest || !dest.length) return;
+          const ref = dest[0];
+          let pageIdx;
+          if (typeof ref === 'number') {
+            pageIdx = ref;
+          } else {
+            pageIdx = await state.pdfDoc.getPageIndex(ref);
+          }
           goToPage(pageIdx + 1);
-          // Su mobile chiudi il pannello dopo il click
           if (window.innerWidth < 768) togglePanel('outline');
         } catch(e) { console.warn('[Outline] nav error:', e); }
       });
@@ -1699,6 +1670,7 @@ async function initOutline() {
   }
 
   buildItems(outline, list);
+  console.log('[Outline] Caricato:', outline.length, 'voci');
 }
 
 /* =====================================================
