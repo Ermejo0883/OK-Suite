@@ -552,7 +552,7 @@
     /* =====================================================
        PANNELLO LATERALE UNIFICATO CON TAB
     ===================================================== */
-    #side-left-panel { order: 1; border-right: 1px solid var(--border); border-left: none; }
+    #side-left-panel { order: 1; border-right: 1px solid var(--border); border-left: none; flex-shrink: 0; }
 
     .side-tab-bar {
       display: flex;
@@ -883,14 +883,7 @@
         <div class="toolbar-sep"></div>
 
         <!-- Anteprime pagine -->
-        <button class="btn-icon" id="btn-thumbs" title="Anteprime pagine" aria-label="Anteprime pagine">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3"  y="3"  width="7" height="7" rx="1"/>
-            <rect x="14" y="3"  width="7" height="7" rx="1"/>
-            <rect x="3"  y="14" width="7" height="7" rx="1"/>
-            <rect x="14" y="14" width="7" height="7" rx="1"/>
-          </svg>
-        </button>
+        
 
         <!-- Sommario -->
         <button class="btn-icon" id="btn-outline" title="Sommario" aria-label="Sommario">
@@ -1020,28 +1013,17 @@
             </select>
           </div>
 
-          <!-- Anteprime all'avvio -->
+          <!-- Pannello laterale all'avvio -->
           <div class="settings-row">
             <div class="settings-label">
-              <span>Pannello laterale — tab Anteprime</span>
-              <span class="settings-hint">Apre il pannello laterale sul tab Anteprime</span>
+              <span>Mostra all'apertura del file</span>
+              <span class="settings-hint">Apre automaticamente il pannello laterale con la scheda scelta</span>
             </div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="set-thumbs-open" />
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            </label>
-          </div>
-
-          <!-- Sommario all'avvio -->
-          <div class="settings-row">
-            <div class="settings-label">
-              <span>Pannello laterale — tab Sommario</span>
-              <span class="settings-hint">Apre il pannello laterale sul tab Sommario</span>
-            </div>
-            <label class="settings-toggle">
-              <input type="checkbox" id="set-outline-open" />
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            </label>
+            <select id="set-panel-open" class="settings-select">
+              <option value="none">Non aprire</option>
+              <option value="outline">Sommario</option>
+              <option value="thumbs">Anteprime</option>
+            </select>
           </div>
 
           <!-- Lingua TTS -->
@@ -1287,7 +1269,7 @@
 const APP_CONFIG = {
   ADS_ENABLED: false,
   IS_PRO:      false,
-  APP_VERSION: '1.0.9',
+  APP_VERSION: '1.1.1',
   APP_NAME:    'OK Suite - PDF',
 };
 
@@ -1328,7 +1310,6 @@ const dom = {
   btnSearch:      $('btn-search'),
   btnFit:         $('btn-fit'),
   btnTts:         $('btn-tts'),
-  btnThumbs:      $('btn-thumbs'),
   pageInput:      $('page-input'),
   totalPages:     $('total-pages'),
   zoomIndicator:  $('zoom-indicator'),
@@ -1641,12 +1622,11 @@ async function openPdfFile(file) {
     await renderAllPages();
     // Auto-apri pannello laterale se impostato
     const _cfg = loadSettings();
-    if (_cfg.thumbsOpen || _cfg.outlineOpen) {
-      const defaultTab = _cfg.outlineOpen ? 'outline' : 'thumbs';
+    if (_cfg.panelOpen && _cfg.panelOpen !== 'none') {
       const leftPanel = document.getElementById('side-left-panel');
       if (leftPanel) {
         leftPanel.classList.add('open');
-        switchTab(defaultTab);
+        switchTab(_cfg.panelOpen);
       }
     }
   } catch(err) {
@@ -1793,7 +1773,7 @@ async function printDocument() {
     /* =====================================================
        PANNELLO LATERALE UNIFICATO CON TAB
     ===================================================== */
-    #side-left-panel { order: 1; border-right: 1px solid var(--border); border-left: none; }
+    #side-left-panel { order: 1; border-right: 1px solid var(--border); border-left: none; flex-shrink: 0; }
 
     .side-tab-bar {
       display: flex;
@@ -2441,6 +2421,7 @@ function switchTab(tabName) {
     document.getElementById('tab-content-' + t)?.classList.toggle('active', t === tabName);
   });
   if (tabName === 'outline') initOutline();
+  if (tabName === 'thumbs')  buildThumbs();
 }
 
 /* ── togglePanel: gestisce pannelli laterali ── */
@@ -2481,8 +2462,7 @@ const MAX_HISTORY   = 10;
 
 const defaultSettings = {
   zoomDefault:  'auto',
-  thumbsOpen:   false,
-  outlineOpen:  false,
+  panelOpen:    'none',   // 'none' | 'outline' | 'thumbs'
   ttsLang:      'it-IT',
 };
 
@@ -2497,14 +2477,12 @@ function saveSettings(s) {
 }
 
 function applySettingsToUI(s) {
-  const zoomSel    = document.getElementById('set-zoom-default');
-  const thumbsCk   = document.getElementById('set-thumbs-open');
-  const outlineCk  = document.getElementById('set-outline-open');
-  const ttsSel     = document.getElementById('set-tts-lang');
-  if (zoomSel)   zoomSel.value   = s.zoomDefault;
-  if (thumbsCk)  thumbsCk.checked  = s.thumbsOpen;
-  if (outlineCk) outlineCk.checked = s.outlineOpen;
-  if (ttsSel)    ttsSel.value    = s.ttsLang;
+  const zoomSel  = document.getElementById('set-zoom-default');
+  const panelSel = document.getElementById('set-panel-open');
+  const ttsSel   = document.getElementById('set-tts-lang');
+  if (zoomSel)  zoomSel.value  = s.zoomDefault;
+  if (panelSel) panelSel.value = s.panelOpen || 'none';
+  if (ttsSel)   ttsSel.value   = s.ttsLang;
 }
 
 function openSettings() {
@@ -2533,10 +2511,7 @@ function initSettingsEvents() {
   document.getElementById('btn-settings-close-bottom')?.addEventListener('click', closeSettings);
 
   // Live save on any change
-  ['set-zoom-default', 'set-tts-lang'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', saveAllSettings);
-  });
-  ['set-thumbs-open', 'set-outline-open'].forEach(id => {
+  ['set-zoom-default', 'set-tts-lang', 'set-panel-open'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', saveAllSettings);
   });
 
@@ -2549,10 +2524,9 @@ function initSettingsEvents() {
 
 function saveAllSettings() {
   const s = {
-    zoomDefault:  document.getElementById('set-zoom-default')?.value  || 'auto',
-    thumbsOpen:   document.getElementById('set-thumbs-open')?.checked  || false,
-    outlineOpen:  document.getElementById('set-outline-open')?.checked || false,
-    ttsLang:      document.getElementById('set-tts-lang')?.value      || 'it-IT',
+    zoomDefault: document.getElementById('set-zoom-default')?.value || 'auto',
+    panelOpen:   document.getElementById('set-panel-open')?.value   || 'none',
+    ttsLang:     document.getElementById('set-tts-lang')?.value     || 'it-IT',
   };
   saveSettings(s);
 }
@@ -2679,7 +2653,6 @@ function initEvents() {
   });
 
   // Pannelli
-  dom.btnThumbs.addEventListener('click',  () => togglePanel('thumbs'));
     dom.btnOutline.addEventListener('click', () => togglePanel('outline'));
   dom.btnSearch.addEventListener('click',  () => togglePanel('search'));
     document.getElementById('btn-search-close').addEventListener('click',  () => togglePanel('search'));
