@@ -905,16 +905,75 @@ async function resetZoom() {
 /* =====================================================
    STAMPA
 ===================================================== */
-function printDocument() {
-  if (!state.pdfUrl) { showToast('Nessun documento da stampare', 'warning'); return; }
-  const iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  iframe.src = state.pdfUrl;
-  document.body.appendChild(iframe);
-  iframe.onload = () => {
-    try { iframe.contentWindow.print(); } catch(e) { window.print(); }
-    setTimeout(() => document.body.removeChild(iframe), 1500);
-  };
+async function printDocument() {
+  if (!state.pdfDoc) { showToast('Nessun documento da stampare', 'warning'); return; }
+
+  showToast('Preparazione stampa…', 'info', 4000);
+
+  try {
+    // Crea una finestra di stampa con tutte le pagine renderizzate su canvas
+    const printWin = window.open('', '_blank', 'width=800,height=600');
+    if (!printWin) {
+      showToast('Popup bloccato — consenti i popup per stampare', 'warning', 4000);
+      return;
+    }
+
+    printWin.document.write(`<!DOCTYPE html><html><head>
+      <title>${state.pdfFile?.name || 'Documento'}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: white; }
+        .print-page {
+          width: 100%;
+          page-break-after: always;
+          display: flex;
+          justify-content: center;
+        }
+        .print-page:last-child { page-break-after: avoid; }
+        canvas { max-width: 100%; height: auto; display: block; }
+        @media print {
+          .print-page { page-break-after: always; }
+          .print-page:last-child { page-break-after: avoid; }
+        }
+      </style>
+    </head><body></body></html>`);
+    printWin.document.close();
+
+    const body = printWin.document.body;
+
+    // Renderizza ogni pagina ad alta risoluzione (scale 2.0 per qualità stampa)
+    const PRINT_SCALE = 2.0;
+    for (let i = 1; i <= state.totalPages; i++) {
+      const page     = await state.pdfDoc.getPage(i);
+      const viewport = page.getViewport({ scale: PRINT_SCALE });
+
+      const canvas  = printWin.document.createElement('canvas');
+      canvas.width  = viewport.width;
+      canvas.height = viewport.height;
+
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const div = printWin.document.createElement('div');
+      div.className = 'print-page';
+      div.appendChild(canvas);
+      body.appendChild(div);
+    }
+
+    // Avvia stampa dopo un breve delay per assicurarsi che il DOM sia pronto
+    setTimeout(() => {
+      printWin.focus();
+      printWin.print();
+      // Chiudi la finestra dopo la stampa
+      printWin.addEventListener('afterprint', () => printWin.close());
+      // Fallback chiusura dopo 30s
+      setTimeout(() => { try { printWin.close(); } catch(e) {} }, 30000);
+    }, 500);
+
+  } catch(err) {
+    console.error('[OK PDF] Errore stampa:', err);
+    showToast('Errore durante la preparazione della stampa', 'error');
+  }
 }
 
 /* =====================================================
