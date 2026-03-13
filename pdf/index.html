@@ -1336,7 +1336,7 @@
 const APP_CONFIG = {
   ADS_ENABLED: false,
   IS_PRO:      false,
-  APP_VERSION: '1.0.2',
+  APP_VERSION: '1.0.3',
   APP_NAME:    'OK Suite - PDF',
 };
 
@@ -2155,28 +2155,48 @@ async function searchInDocument(query) {
     // Quindi:  canvasX = pdfX * scale
     //          canvasY = vp.height - pdfY * scale   (asse Y invertito)
 
-content.items.forEach(item => {
+// Costruisci charMap: ogni carattere con le sue coordinate PDF
+    const charMap = [];
+    content.items.forEach(item => {
       if (!item.str) return;
-      const lower = item.str.toLowerCase();
-      let pos = 0;
-      while ((pos = lower.indexOf(search.query, pos)) !== -1) {
-        // item.transform a scala 1.0: [fontScaleX, 0, 0, fontScaleY, x_pdf, y_pdf]
-        const [fsX, , , fsY, xPdf, yPdf] = item.transform;
-        const fontH  = Math.abs(fsY);                    // altezza font in PDF units
-        const charW  = Math.abs(item.width) / (item.str.length || 1);
+      const [, , , fsY, xPdf, yPdf] = item.transform;
+      const fontH = Math.abs(fsY);
+      const charW = Math.abs(item.width) / (item.str.length || 1);
+      for (let ci = 0; ci < item.str.length; ci++) {
+        charMap.push({ ch: item.str[ci], xPdf: xPdf + charW * ci, yPdf, fontH, charW });
+      }
+    });
 
-        // Converti in canvas pixels
-        const cx = (xPdf + charW * pos) * scale;
-        const cy = vp.height - (yPdf + fontH) * scale;  // top del carattere
-        const cw = charW * search.query.length * scale;
-        const ch = fontH * scale * 1.1;                  // +10% margine
+    // Cerca nella stringa unita (gestisce parole spezzate tra item)
+    const fullText = charMap.map(c => c.ch).join('').toLowerCase();
+    let pos = 0;
+    while ((pos = fullText.indexOf(search.query, pos)) !== -1) {
+      const matchChars = charMap.slice(pos, pos + search.query.length);
 
+      // Raggruppa per riga (yPdf simile = stessa riga)
+      const rows = [];
+      matchChars.forEach(c => {
+        const row = rows.find(r => Math.abs(r.y - c.yPdf) < 4);
+        if (row) { row.chars.push(c); }
+        else { rows.push({ y: c.yPdf, chars: [c] }); }
+      });
+
+      rows.forEach(row => {
+        const xs   = row.chars.map(c => c.xPdf);
+        const xMin = Math.min(...xs);
+        const xMax = Math.max(...xs) + row.chars[row.chars.length - 1].charW;
+        const fH   = row.chars[0].fontH;
+        const cx = xMin * scale;
+        const cy = vp.height - (row.y + fH) * scale;
+        const cw = (xMax - xMin) * scale;
+        const ch = fH * scale * 1.15;
         if (!search.highlights[pageNum]) search.highlights[pageNum] = [];
         const rectIdx = search.highlights[pageNum].length;
         search.highlights[pageNum].push({ cx, cy, cw, ch });
         search.results.push({ page: pageNum, rectIdx });
-pos++;
-      }
+      });
+      pos++;
+    }
     });
   }
 
