@@ -388,6 +388,58 @@
       color: var(--text-dim);
     }
 
+    /* Thumbnails */
+    .thumbs-list {
+      overflow-y: auto;
+      flex: 1;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .thumb-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      border: 2px solid transparent;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .thumb-item:hover { background: var(--surface2); }
+    .thumb-item.active { border-color: var(--accent); }
+
+    .thumb-canvas {
+      display: block;
+      width: 100%;
+      max-width: 200px;
+      height: auto;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      background: white;
+      border-radius: 2px;
+    }
+
+    .thumb-num {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .thumb-item.active .thumb-num { color: var(--accent); font-weight: 600; }
+
+    .thumb-loading {
+      width: 160px; height: 110px;
+      background: var(--surface2);
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
     /* TTS active state */
     .btn-icon.tts-active {
       color: var(--accent);
@@ -714,6 +766,16 @@
 
         <div class="toolbar-sep"></div>
 
+        <!-- Anteprime pagine -->
+        <button class="btn-icon" id="btn-thumbs" title="Anteprime pagine" aria-label="Anteprime pagine">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3"  y="3"  width="7" height="7" rx="1"/>
+            <rect x="14" y="3"  width="7" height="7" rx="1"/>
+            <rect x="3"  y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </button>
+
         <!-- Sommario -->
         <button class="btn-icon" id="btn-outline" title="Sommario" aria-label="Sommario">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -783,6 +845,19 @@
         </button>
       </div>
       <ul id="outline-list" class="outline-list"></ul>
+    </div>
+
+    <!-- Pannello Anteprime -->
+    <div id="thumbs-panel" class="side-panel">
+      <div class="side-panel-header">
+        <span>Anteprime</span>
+        <button class="btn-icon" id="btn-thumbs-close" aria-label="Chiudi anteprime">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div id="thumbs-list" class="thumbs-list"></div>
     </div>
 
     <!-- Pannello Cerca -->
@@ -1015,6 +1090,7 @@ const dom = {
   btnSearch:      $('btn-search'),
   btnFit:         $('btn-fit'),
   btnTts:         $('btn-tts'),
+  btnThumbs:      $('btn-thumbs'),
   pageInput:      $('page-input'),
   totalPages:     $('total-pages'),
   zoomIndicator:  $('zoom-indicator'),
@@ -1210,6 +1286,7 @@ function initScrollObserver(scroller) {
         dom.pageInput.value = pageNum;
         dom.btnPrev.disabled = pageNum <= 1;
         dom.btnNext.disabled = pageNum >= state.totalPages;
+        updateThumbActive(pageNum);
       }
     }
   }, {
@@ -1828,10 +1905,98 @@ function updateTtsButton(active) {
 }
 
 /* =====================================================
-   PANNELLI LATERALI (outline + search)
+   ANTEPRIME PAGINE (Thumbnails)
+===================================================== */
+const thumbs = {
+  rendered: new Set(),
+  observer: null,
+};
+
+async function buildThumbs() {
+  const list = document.getElementById('thumbs-list');
+  if (!list || !state.pdfDoc) return;
+  list.innerHTML = '';
+  thumbs.rendered.clear();
+
+  // Crea placeholder per ogni pagina
+  for (let i = 1; i <= state.totalPages; i++) {
+    const item = document.createElement('div');
+    item.className   = 'thumb-item';
+    item.dataset.page = i;
+    if (i === state.currentPage) item.classList.add('active');
+
+    const placeholder = document.createElement('div');
+    placeholder.className = 'thumb-loading';
+    placeholder.textContent = '…';
+
+    const num = document.createElement('span');
+    num.className   = 'thumb-num';
+    num.textContent = i;
+
+    item.appendChild(placeholder);
+    item.appendChild(num);
+
+    item.addEventListener('click', () => {
+      goToPage(i);
+      if (window.innerWidth < 768) togglePanel('thumbs');
+    });
+
+    list.appendChild(item);
+  }
+
+  // IntersectionObserver: renderizza solo le anteprime visibili
+  if (thumbs.observer) thumbs.observer.disconnect();
+  thumbs.observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const page = parseInt(entry.target.dataset.page, 10);
+      if (!thumbs.rendered.has(page)) {
+        thumbs.rendered.add(page);
+        renderThumb(entry.target, page);
+      }
+    });
+  }, { root: list, rootMargin: '200px', threshold: 0 });
+
+  list.querySelectorAll('.thumb-item').forEach(el => thumbs.observer.observe(el));
+}
+
+async function renderThumb(item, pageNum) {
+  try {
+    const page     = await state.pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 0.25 });
+
+    const canvas  = document.createElement('canvas');
+    canvas.className = 'thumb-canvas';
+    canvas.width  = viewport.width;
+    canvas.height = viewport.height;
+
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    // Sostituisce il placeholder
+    const placeholder = item.querySelector('.thumb-loading');
+    if (placeholder) item.replaceChild(canvas, placeholder);
+  } catch(e) {
+    console.warn('[Thumbs] render error page', pageNum, e);
+  }
+}
+
+function updateThumbActive(pageNum) {
+  const list = document.getElementById('thumbs-list');
+  if (!list) return;
+  list.querySelectorAll('.thumb-item').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.page) === pageNum);
+  });
+  // Scrolla la thumbnail attiva nel pannello
+  const active = list.querySelector('.thumb-item.active');
+  if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+/* =====================================================
+   PANNELLI LATERALI (outline + search + thumbs)
 ===================================================== */
 function togglePanel(name) {
-  const panels  = ['outline-panel', 'search-panel'];
+  const panels  = ['outline-panel', 'search-panel', 'thumbs-panel'];
   const panelId = `${name}-panel`;
 
   panels.forEach(id => {
@@ -1840,12 +2005,9 @@ function togglePanel(name) {
     if (id === panelId) {
       const isOpen = el.classList.contains('open');
       el.classList.toggle('open', !isOpen);
-      // Se apriamo il sommario, popoliamolo
       if (!isOpen && id === 'outline-panel') initOutline();
-      // Se apriamo la ricerca, focus sull'input
-      if (!isOpen && id === 'search-panel') {
-        setTimeout(() => document.getElementById('search-input')?.focus(), 150);
-      }
+      if (!isOpen && id === 'search-panel')  setTimeout(() => document.getElementById('search-input')?.focus(), 150);
+      if (!isOpen && id === 'thumbs-panel')  buildThumbs();
     } else {
       el.classList.remove('open');
     }
@@ -1923,6 +2085,8 @@ function initEvents() {
   });
 
   // Pannelli
+  dom.btnThumbs.addEventListener('click',  () => togglePanel('thumbs'));
+  document.getElementById('btn-thumbs-close').addEventListener('click', () => togglePanel('thumbs'));
   dom.btnOutline.addEventListener('click', () => togglePanel('outline'));
   dom.btnSearch.addEventListener('click',  () => togglePanel('search'));
   document.getElementById('btn-outline-close').addEventListener('click', () => togglePanel('outline'));
