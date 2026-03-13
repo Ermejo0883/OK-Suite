@@ -298,8 +298,109 @@
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
     /* =====================================================
-       PWA INSTALL BANNER
+       SIDE PANELS (Sommario + Cerca)
     ===================================================== */
+    .side-panel {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 4px 0 16px rgba(0,0,0,0.3);
+    }
+
+    .side-panel.open { transform: translateX(0); }
+
+    .side-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    /* Outline list */
+    .outline-list {
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+      padding: 8px 0;
+    }
+
+    .outline-item { display: flex; flex-direction: column; }
+
+    .outline-btn {
+      background: none; border: none;
+      color: var(--text-dim); font-family: 'DM Sans', sans-serif;
+      font-size: 12px; font-weight: 400;
+      text-align: left; padding: 7px 14px;
+      cursor: pointer; width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: background 0.12s, color 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .outline-btn:hover { background: var(--surface2); color: var(--text); }
+    .outline-sublist { list-style: none; }
+    .outline-empty { color: var(--text-dim); font-size: 12px; padding: 16px; text-align: center; }
+
+    /* Search panel */
+    .search-controls {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #search-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #search-input:focus { border-color: var(--accent); }
+
+    .search-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .search-count {
+      flex: 1;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* TTS active state */
+    .btn-icon.tts-active {
+      color: var(--accent);
+      background: rgba(79,142,247,0.12);
+    }
+    .btn-icon.tts-active:hover { background: rgba(79,142,247,0.2); }
+
+    /* Fit button active */
+    .btn-icon.fit-active {
+      color: var(--accent);
+    }
+
+  </style>
     #pwa-banner {
       position: fixed;
       bottom: calc(var(--statusbar-h) + var(--admob-h) + 10px);
@@ -361,6 +462,192 @@
     }
     .btn-pwa-dismiss:hover { background: var(--border); color: var(--text); }
 
+
+    /* =====================================================
+       PANNELLO LATERALE (Sommario)
+    ===================================================== */
+    #side-panel {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 80;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 4px 0 16px rgba(0,0,0,0.4);
+    }
+    #side-panel.open { transform: translateX(0); }
+
+    .side-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .side-panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .btn-panel-close {
+      width: 28px; height: 28px;
+      background: transparent; border: none;
+      color: var(--text-dim); border-radius: 6px;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: background .15s, color .15s;
+    }
+    .btn-panel-close:hover { background: var(--border); color: var(--text); }
+
+    #outline-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .outline-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background .12s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .outline-item:hover { background: var(--surface2); }
+    .outline-item.depth-1 { padding-left: 28px; font-size: 12px; color: var(--text-dim); }
+    .outline-item.depth-2 { padding-left: 40px; font-size: 11px; color: var(--text-dim); }
+    .outline-empty {
+      padding: 24px 16px;
+      font-size: 13px;
+      color: var(--text-dim);
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* Panel overlay (mobile) */
+    #panel-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 79;
+      display: none;
+    }
+    #panel-overlay.visible { display: block; }
+
+    /* =====================================================
+       BARRA DI RICERCA
+    ===================================================== */
+    #search-bar {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      z-index: 90;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transform: scaleX(0);
+      transform-origin: right center;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #search-bar.open {
+      transform: scaleX(1);
+      opacity: 1;
+      pointer-events: all;
+    }
+    #search-input {
+      width: 180px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+    }
+    #search-input::placeholder { color: var(--text-dim); }
+    .search-nav-btn {
+      width: 24px; height: 24px;
+      background: transparent; border: none;
+      color: var(--text-dim); border-radius: 4px;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: background .12s, color .12s;
+    }
+    .search-nav-btn:hover { background: var(--surface2); color: var(--text); }
+    .search-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    #search-count {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      min-width: 40px;
+      text-align: center;
+    }
+    .search-sep { width: 1px; height: 16px; background: var(--border); margin: 0 2px; }
+
+    /* Highlight testo trovato */
+    .search-highlight {
+      background: rgba(255, 200, 0, 0.45);
+      border-radius: 2px;
+    }
+    .search-highlight.current {
+      background: rgba(255, 140, 0, 0.7);
+      outline: 2px solid orange;
+    }
+
+    /* =====================================================
+       TTS — Leggi ad alta voce
+    ===================================================== */
+    #tts-bar {
+      position: absolute;
+      bottom: calc(var(--statusbar-h) + 8px);
+      left: 50%; transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      z-index: 90;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      white-space: nowrap;
+    }
+    #tts-bar.visible { display: flex; }
+    #tts-status {
+      font-size: 12px;
+      color: var(--text-dim);
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-tts {
+      width: 32px; height: 32px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 50%;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .btn-tts:hover { background: var(--border); }
+    .btn-tts.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
   </style>
 </head>
 <body>
@@ -420,12 +707,89 @@
         </svg>
       </button>
 
+      <div class="toolbar-sep"></div>
+
+      <!-- Sommario -->
+      <button class="btn-icon" id="btn-outline" title="Sommario" aria-label="Apri sommario" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="8" y1="6"  x2="21" y2="6"/>
+          <line x1="8" y1="12" x2="21" y2="12"/>
+          <line x1="8" y1="18" x2="21" y2="18"/>
+          <line x1="3" y1="6"  x2="3.01" y2="6"/>
+          <line x1="3" y1="12" x2="3.01" y2="12"/>
+          <line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+      </button>
+
+      <!-- Cerca -->
+      <button class="btn-icon" id="btn-search-toggle" title="Cerca nel documento" aria-label="Cerca" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+
+      <!-- Adatta -->
+      <button class="btn-icon" id="btn-fit" title="Adatta larghezza" aria-label="Adatta larghezza" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"/>
+          <polyline points="9 21 3 21 3 15"/>
+          <line x1="21" y1="3" x2="14" y2="10"/>
+          <line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
+      </button>
+
+      <!-- Leggi ad alta voce -->
+      <button class="btn-icon" id="btn-tts" title="Leggi ad alta voce" aria-label="Leggi ad alta voce" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      </button>
+
       <div class="toolbar-sep" id="sep-close" style="display:none"></div>
 
       <button class="btn-icon danger-icon" id="btn-close" title="Chiudi documento" aria-label="Chiudi documento" style="display:none">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6"  x2="6"  y2="18"/>
           <line x1="6"  y1="6"  x2="18" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="toolbar-sep"></div>
+
+      <!-- Sommario -->
+      <button class="btn-icon" id="btn-outline" title="Sommario" aria-label="Mostra sommario" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6"  x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="15" y2="12"/>
+          <line x1="3" y1="18" x2="18" y2="18"/>
+        </svg>
+      </button>
+
+      <!-- Cerca -->
+      <button class="btn-icon" id="btn-search" title="Cerca nel documento" aria-label="Cerca nel documento" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+
+      <!-- Adatta -->
+      <button class="btn-icon" id="btn-fit" title="Adatta larghezza" aria-label="Adatta larghezza" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+          <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+        </svg>
+      </button>
+
+      <!-- Leggi ad alta voce -->
+      <button class="btn-icon" id="btn-tts" title="Leggi ad alta voce" aria-label="Leggi ad alta voce" disabled>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
         </svg>
       </button>
     </div>
@@ -435,6 +799,91 @@
        VISUALIZZATORE
   ================================================ -->
   <main id="viewer-area">
+
+    <!-- Pannello Sommario -->
+    <div id="outline-panel" class="side-panel">
+      <div class="side-panel-header">
+        <span>Sommario</span>
+        <button class="btn-icon" id="btn-outline-close" aria-label="Chiudi sommario">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <ul id="outline-list" class="outline-list"></ul>
+    </div>
+
+    <!-- Pannello Cerca -->
+    <div id="search-panel" class="side-panel search-panel">
+      <div class="side-panel-header">
+        <span>Cerca</span>
+        <button class="btn-icon" id="btn-search-close" aria-label="Chiudi ricerca">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="search-controls">
+        <input type="search" id="search-input" placeholder="Cerca nel documento…" autocomplete="off" />
+        <div class="search-nav">
+          <span id="search-count" class="search-count"></span>
+          <button class="btn-nav" id="btn-search-prev" title="Risultato precedente">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="btn-nav" id="btn-search-next" title="Risultato successivo">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pannello laterale Sommario -->
+    <div id="panel-overlay"></div>
+    <div id="side-panel">
+      <div class="side-panel-header">
+        <span class="side-panel-title">Sommario</span>
+        <button class="btn-panel-close" id="btn-panel-close" aria-label="Chiudi pannello">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div id="outline-list"></div>
+    </div>
+
+    <!-- Barra di ricerca -->
+    <div id="search-bar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="search-input" placeholder="Cerca nel documento…" autocomplete="off" />
+      <span id="search-count"></span>
+      <div class="search-sep"></div>
+      <button class="search-nav-btn" id="btn-search-prev" title="Precedente" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <button class="search-nav-btn" id="btn-search-next" title="Successivo" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <button class="search-nav-btn" id="btn-search-close" title="Chiudi">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- TTS bar -->
+    <div id="tts-bar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+      </svg>
+      <span id="tts-status">In lettura…</span>
+      <button class="btn-tts" id="btn-tts-playpause" title="Pausa / Riprendi">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <button class="btn-tts" id="btn-tts-stop" title="Ferma lettura">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      </button>
+    </div>
 
     <!-- Contenitore PDF.js viewer -->
     <div id="pdf-viewer"></div>
@@ -591,6 +1040,10 @@ const dom = {
   btnNext:        $('btn-next'),
   btnZoomIn:      $('btn-zoom-in'),
   btnZoomOut:     $('btn-zoom-out'),
+  btnOutline:     $('btn-outline'),
+  btnSearch:      $('btn-search'),
+  btnFit:         $('btn-fit'),
+  btnTts:         $('btn-tts'),
   pageInput:      $('page-input'),
   totalPages:     $('total-pages'),
   zoomIndicator:  $('zoom-indicator'),
@@ -634,6 +1087,10 @@ function updateUI() {
   dom.btnNext.disabled    = !has || state.currentPage >= state.totalPages;
   dom.btnZoomIn.disabled  = !has;
   dom.btnZoomOut.disabled = !has;
+  dom.btnOutline.disabled = !has;
+  dom.btnSearch.disabled  = !has;
+  dom.btnFit.disabled     = !has;
+  dom.btnTts.disabled     = !has;
   dom.pageInput.disabled  = !has;
   dom.pageInput.value     = has ? state.currentPage : 1;
   dom.totalPages.textContent    = has ? state.totalPages : '—';
@@ -696,6 +1153,11 @@ function buildScrollContainer() {
 function calcScale(viewport) {
   if (state.zoomLocked) return state.zoom;
   const containerW = dom.pdfViewer.clientWidth - 32;
+  const containerH = dom.pdfViewer.clientHeight - 32;
+  if (state.fitMode === 'page') {
+    return Math.min(containerW / viewport.width, containerH / viewport.height);
+  }
+  // Default: fit-width
   return Math.min(containerW / viewport.width, 2.5);
 }
 
@@ -863,7 +1325,7 @@ function resetState() {
   if (state.pdfUrl) URL.revokeObjectURL(state.pdfUrl);
   Object.assign(state, {
     pdfFile: null, pdfUrl: null, totalPages: 0,
-    currentPage: 1, zoom: 1.0, zoomLocked: false,
+    currentPage: 1, zoom: 1.0, zoomLocked: false, fitMode: 'width',
     pdfDoc: null, rendering: false,
   });
   dom.pdfViewer.innerHTML = '';
@@ -935,7 +1397,193 @@ async function printDocument() {
           .print-page { page-break-after: always; }
           .print-page:last-child { page-break-after: avoid; }
         }
-      </style>
+    
+    /* =====================================================
+       PANNELLO LATERALE (Sommario)
+    ===================================================== */
+    #side-panel {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 80;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 4px 0 16px rgba(0,0,0,0.4);
+    }
+    #side-panel.open { transform: translateX(0); }
+
+    .side-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .side-panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .btn-panel-close {
+      width: 28px; height: 28px;
+      background: transparent; border: none;
+      color: var(--text-dim); border-radius: 6px;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: background .15s, color .15s;
+    }
+    .btn-panel-close:hover { background: var(--border); color: var(--text); }
+
+    #outline-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .outline-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background .12s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .outline-item:hover { background: var(--surface2); }
+    .outline-item.depth-1 { padding-left: 28px; font-size: 12px; color: var(--text-dim); }
+    .outline-item.depth-2 { padding-left: 40px; font-size: 11px; color: var(--text-dim); }
+    .outline-empty {
+      padding: 24px 16px;
+      font-size: 13px;
+      color: var(--text-dim);
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* Panel overlay (mobile) */
+    #panel-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 79;
+      display: none;
+    }
+    #panel-overlay.visible { display: block; }
+
+    /* =====================================================
+       BARRA DI RICERCA
+    ===================================================== */
+    #search-bar {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      z-index: 90;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transform: scaleX(0);
+      transform-origin: right center;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #search-bar.open {
+      transform: scaleX(1);
+      opacity: 1;
+      pointer-events: all;
+    }
+    #search-input {
+      width: 180px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+    }
+    #search-input::placeholder { color: var(--text-dim); }
+    .search-nav-btn {
+      width: 24px; height: 24px;
+      background: transparent; border: none;
+      color: var(--text-dim); border-radius: 4px;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: background .12s, color .12s;
+    }
+    .search-nav-btn:hover { background: var(--surface2); color: var(--text); }
+    .search-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    #search-count {
+      font-size: 11px;
+      color: var(--text-dim);
+      white-space: nowrap;
+      min-width: 40px;
+      text-align: center;
+    }
+    .search-sep { width: 1px; height: 16px; background: var(--border); margin: 0 2px; }
+
+    /* Highlight testo trovato */
+    .search-highlight {
+      background: rgba(255, 200, 0, 0.45);
+      border-radius: 2px;
+    }
+    .search-highlight.current {
+      background: rgba(255, 140, 0, 0.7);
+      outline: 2px solid orange;
+    }
+
+    /* =====================================================
+       TTS — Leggi ad alta voce
+    ===================================================== */
+    #tts-bar {
+      position: absolute;
+      bottom: calc(var(--statusbar-h) + 8px);
+      left: 50%; transform: translateX(-50%);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      z-index: 90;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      white-space: nowrap;
+    }
+    #tts-bar.visible { display: flex; }
+    #tts-status {
+      font-size: 12px;
+      color: var(--text-dim);
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-tts {
+      width: 32px; height: 32px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 50%;
+      cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .btn-tts:hover { background: var(--border); }
+    .btn-tts.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  </style>
     </head><body></body></html>`);
     printWin.document.close();
 
@@ -997,6 +1645,241 @@ async function shareDocument() {
   }
 }
 
+
+/* =====================================================
+   SOMMARIO (Outline)
+===================================================== */
+async function initOutline() {
+  const panel  = document.getElementById('outline-panel');
+  const list   = document.getElementById('outline-list');
+  if (!state.pdfDoc) return;
+
+  const outline = await state.pdfDoc.getOutline();
+  list.innerHTML = '';
+
+  if (!outline || outline.length === 0) {
+    list.innerHTML = '<li class="outline-empty">Nessun sommario disponibile</li>';
+    return;
+  }
+
+  function buildItems(items, container, level = 0) {
+    items.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'outline-item';
+      li.style.paddingLeft = `${12 + level * 14}px`;
+
+      const btn = document.createElement('button');
+      btn.className   = 'outline-btn';
+      btn.textContent = item.title;
+      btn.title       = item.title;
+
+      btn.addEventListener('click', async () => {
+        if (!item.dest) return;
+        try {
+          let dest = item.dest;
+          if (typeof dest === 'string') dest = await state.pdfDoc.getDestination(dest);
+          if (!dest) return;
+          const ref     = dest[0];
+          const pageIdx = await state.pdfDoc.getPageIndex(ref);
+          goToPage(pageIdx + 1);
+          // Su mobile chiudi il pannello dopo il click
+          if (window.innerWidth < 768) togglePanel('outline');
+        } catch(e) { console.warn('[Outline] nav error:', e); }
+      });
+
+      li.appendChild(btn);
+      if (item.items?.length) {
+        const sub = document.createElement('ul');
+        sub.className = 'outline-sublist';
+        buildItems(item.items, sub, level + 1);
+        li.appendChild(sub);
+      }
+      container.appendChild(li);
+    });
+  }
+
+  buildItems(outline, list);
+}
+
+/* =====================================================
+   CERCA NEL DOCUMENTO
+===================================================== */
+const search = {
+  query:   '',
+  results: [],  // [{page, items}]
+  current: -1,
+};
+
+async function searchInDocument(query) {
+  if (!state.pdfDoc || !query.trim()) {
+    clearSearch();
+    return;
+  }
+
+  search.query   = query.toLowerCase();
+  search.results = [];
+  search.current = -1;
+
+  const resultCount = document.getElementById('search-count');
+  resultCount.textContent = 'Ricerca…';
+
+  for (let i = 1; i <= state.totalPages; i++) {
+    const page    = await state.pdfDoc.getPage(i);
+    const content = await page.getTextContent();
+    const text    = content.items.map(it => it.str).join(' ').toLowerCase();
+    if (text.includes(search.query)) {
+      search.results.push(i);
+    }
+  }
+
+  if (search.results.length === 0) {
+    resultCount.textContent = 'Nessun risultato';
+    return;
+  }
+
+  search.current = 0;
+  resultCount.textContent = `1 / ${search.results.length}`;
+  goToPage(search.results[0]);
+}
+
+function searchNext() {
+  if (!search.results.length) return;
+  search.current = (search.current + 1) % search.results.length;
+  document.getElementById('search-count').textContent =
+    `${search.current + 1} / ${search.results.length}`;
+  goToPage(search.results[search.current]);
+}
+
+function searchPrev() {
+  if (!search.results.length) return;
+  search.current = (search.current - 1 + search.results.length) % search.results.length;
+  document.getElementById('search-count').textContent =
+    `${search.current + 1} / ${search.results.length}`;
+  goToPage(search.results[search.current]);
+}
+
+function clearSearch() {
+  search.query   = '';
+  search.results = [];
+  search.current = -1;
+  const input = document.getElementById('search-input');
+  const count = document.getElementById('search-count');
+  if (input) input.value = '';
+  if (count) count.textContent = '';
+}
+
+/* =====================================================
+   ADATTA: fit-width / fit-page
+===================================================== */
+async function fitWidth() {
+  if (!state.pdfDoc) return;
+  state.zoomLocked = false;
+  state.fitMode    = 'width';
+  await rerenderAllPages();
+  showToast('Adatta larghezza', 'info', 1500);
+}
+
+async function fitPage() {
+  if (!state.pdfDoc) return;
+  state.zoomLocked = false;
+  state.fitMode    = 'page';
+  await rerenderAllPages();
+  showToast('Adatta pagina', 'info', 1500);
+}
+
+/* =====================================================
+   LEGGI AD ALTA VOCE (Web Speech API)
+===================================================== */
+const tts = {
+  active:    false,
+  utterance: null,
+  pageQueue: [],
+};
+
+async function startReading() {
+  if (!state.pdfDoc) return;
+  if (!('speechSynthesis' in window)) {
+    showToast('Lettura ad alta voce non supportata in questo browser', 'warning');
+    return;
+  }
+
+  stopReading();
+  tts.active = true;
+  updateTtsButton(true);
+
+  // Leggi dalla pagina corrente in poi
+  for (let i = state.currentPage; i <= state.totalPages; i++) {
+    if (!tts.active) break;
+    const page    = await state.pdfDoc.getPage(i);
+    const content = await page.getTextContent();
+    const text    = content.items.map(it => it.str).join(' ').trim();
+    if (!text) continue;
+
+    // Scorri alla pagina
+    goToPage(i);
+
+    await new Promise(resolve => {
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang  = 'it-IT';
+      utt.rate  = 1.0;
+      utt.onend = resolve;
+      utt.onerror = resolve;
+      tts.utterance = utt;
+      window.speechSynthesis.speak(utt);
+    });
+  }
+
+  tts.active = false;
+  updateTtsButton(false);
+}
+
+function stopReading() {
+  tts.active = false;
+  window.speechSynthesis?.cancel();
+  tts.utterance = null;
+  updateTtsButton(false);
+}
+
+function toggleReading() {
+  if (tts.active) {
+    stopReading();
+  } else {
+    startReading();
+  }
+}
+
+function updateTtsButton(active) {
+  const btn = document.getElementById('btn-tts');
+  if (!btn) return;
+  btn.classList.toggle('tts-active', active);
+  btn.title = active ? 'Interrompi lettura' : 'Leggi ad alta voce';
+}
+
+/* =====================================================
+   PANNELLI LATERALI (outline + search)
+===================================================== */
+function togglePanel(name) {
+  const panels  = ['outline-panel', 'search-panel'];
+  const panelId = `${name}-panel`;
+
+  panels.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === panelId) {
+      const isOpen = el.classList.contains('open');
+      el.classList.toggle('open', !isOpen);
+      // Se apriamo il sommario, popoliamolo
+      if (!isOpen && id === 'outline-panel') initOutline();
+      // Se apriamo la ricerca, focus sull'input
+      if (!isOpen && id === 'search-panel') {
+        setTimeout(() => document.getElementById('search-input')?.focus(), 150);
+      }
+    } else {
+      el.classList.remove('open');
+    }
+  });
+}
+
 /* =====================================================
    DRAG & DROP
 ===================================================== */
@@ -1042,7 +1925,7 @@ function initEvents() {
   // Toolbar
   dom.btnPrint.addEventListener('click', printDocument);
   dom.btnShare.addEventListener('click', shareDocument);
-  dom.btnClose.addEventListener('click', () => { resetState(); updateUI(); showToast('Documento chiuso', 'info'); });
+  dom.btnClose.addEventListener('click', () => { stopReading(); resetState(); updateUI(); showToast('Documento chiuso', 'info'); });
 
   // Navigazione pagine (scroll to page)
   dom.btnPrev.addEventListener('click', () => goToPage(state.currentPage - 1));
@@ -1066,6 +1949,40 @@ function initEvents() {
     if (k === 'Home') goToPage(1);
     if (k === 'End')  goToPage(state.totalPages);
   });
+
+  // Pannelli
+  dom.btnOutline.addEventListener('click', () => togglePanel('outline'));
+  dom.btnSearch.addEventListener('click',  () => togglePanel('search'));
+  document.getElementById('btn-outline-close').addEventListener('click', () => togglePanel('outline'));
+  document.getElementById('btn-search-close').addEventListener('click',  () => togglePanel('search'));
+
+  // Fit
+  let fitToggle = 'width';
+  dom.btnFit.addEventListener('click', () => {
+    fitToggle = fitToggle === 'width' ? 'page' : 'width';
+    dom.btnFit.classList.toggle('fit-active', fitToggle === 'page');
+    dom.btnFit.title = fitToggle === 'page' ? 'Adatta pagina (attivo)' : 'Adatta larghezza';
+    state.fitMode    = fitToggle;
+    state.zoomLocked = false;
+    rerenderAllPages();
+  });
+
+  // TTS
+  dom.btnTts.addEventListener('click', toggleReading);
+
+  // Search
+  const searchInput = document.getElementById('search-input');
+  let searchTimer;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => searchInDocument(searchInput.value), 600);
+  });
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') searchNext();
+    if (e.key === 'Escape') togglePanel('search');
+  });
+  document.getElementById('btn-search-next').addEventListener('click', searchNext);
+  document.getElementById('btn-search-prev').addEventListener('click', searchPrev);
 
   // Zoom buttons
   dom.btnZoomIn.addEventListener('click',  () => changeZoom(+0.25));
