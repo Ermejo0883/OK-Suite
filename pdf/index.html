@@ -548,6 +548,53 @@
       font-style: italic;
     }
 
+
+    /* =====================================================
+       PANNELLO LATERALE UNIFICATO CON TAB
+    ===================================================== */
+    #side-left-panel { order: 1; border-right: 1px solid var(--border); border-left: none; }
+
+    .side-tab-bar {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      padding: 0 4px;
+    }
+
+    .side-tab {
+      flex: 1;
+      padding: 10px 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .side-tab:hover  { color: var(--text); }
+    .side-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .side-panel-close-btn {
+      flex-shrink: 0;
+      margin-left: auto;
+      color: var(--text-dim);
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex-direction: column;
+    }
+    .tab-content.active { display: flex; }
+
     /* =====================================================
        BARRA DI RICERCA
     ===================================================== */
@@ -912,17 +959,26 @@
   ================================================ -->
   <main id="viewer-area">
 
-    <!-- Pannello Sommario -->
-    <div id="outline-panel" class="side-panel">
-      <div class="side-panel-header">
-        <span>Sommario</span>
-        <button class="btn-icon" id="btn-outline-close" aria-label="Chiudi sommario">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Pannello laterale unificato (Sommario + Anteprime) -->
+    <div id="side-left-panel" class="side-panel">
+      <!-- Tab bar -->
+      <div class="side-tab-bar">
+        <button class="side-tab active" id="tab-outline" data-tab="outline">Sommario</button>
+        <button class="side-tab" id="tab-thumbs"  data-tab="thumbs">Anteprime</button>
+        <button class="btn-icon side-panel-close-btn" id="btn-left-panel-close" aria-label="Chiudi pannello">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
       </div>
-      <ul id="outline-list" class="outline-list"></ul>
+      <!-- Tab: Sommario -->
+      <div id="tab-content-outline" class="tab-content active">
+        <ul id="outline-list" class="outline-list"></ul>
+      </div>
+      <!-- Tab: Anteprime -->
+      <div id="tab-content-thumbs" class="tab-content">
+        <div id="thumbs-list" class="thumbs-list"></div>
+      </div>
     </div>
 
     <!-- Overlay per chiudere pannelli cliccando fuori -->
@@ -967,8 +1023,8 @@
           <!-- Anteprime all'avvio -->
           <div class="settings-row">
             <div class="settings-label">
-              <span>Pannello anteprime</span>
-              <span class="settings-hint">Aperto automaticamente all'apertura del file</span>
+              <span>Pannello laterale — tab Anteprime</span>
+              <span class="settings-hint">Apre il pannello laterale sul tab Anteprime</span>
             </div>
             <label class="settings-toggle">
               <input type="checkbox" id="set-thumbs-open" />
@@ -979,8 +1035,8 @@
           <!-- Sommario all'avvio -->
           <div class="settings-row">
             <div class="settings-label">
-              <span>Pannello sommario</span>
-              <span class="settings-hint">Aperto automaticamente all'apertura del file</span>
+              <span>Pannello laterale — tab Sommario</span>
+              <span class="settings-hint">Apre il pannello laterale sul tab Sommario</span>
             </div>
             <label class="settings-toggle">
               <input type="checkbox" id="set-outline-open" />
@@ -1085,18 +1141,7 @@
       </div><!-- /.settings-body -->
     </div><!-- /#settings-panel -->
 
-    <!-- Pannello Anteprime -->
-    <div id="thumbs-panel" class="side-panel">
-      <div class="side-panel-header">
-        <span>Anteprime</span>
-        <button class="btn-icon" id="btn-thumbs-close" aria-label="Chiudi anteprime">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
-      <div id="thumbs-list" class="thumbs-list"></div>
-    </div>
+
 
     <!-- Pannello Cerca -->
     <div id="search-panel" class="side-panel search-panel">
@@ -1242,7 +1287,7 @@
 const APP_CONFIG = {
   ADS_ENABLED: false,
   IS_PRO:      false,
-  APP_VERSION: '1.0.8',
+  APP_VERSION: '1.0.9',
   APP_NAME:    'OK Suite - PDF',
 };
 
@@ -1594,10 +1639,16 @@ async function openPdfFile(file) {
     state.pdfDoc     = await pdfjsLib.getDocument({ url: state.pdfUrl }).promise;
     state.totalPages = state.pdfDoc.numPages;
     await renderAllPages();
-    // Auto-apri pannelli se impostato
+    // Auto-apri pannello laterale se impostato
     const _cfg = loadSettings();
-    if (_cfg.thumbsOpen)  togglePanel('thumbs');
-    if (_cfg.outlineOpen) togglePanel('outline');
+    if (_cfg.thumbsOpen || _cfg.outlineOpen) {
+      const defaultTab = _cfg.outlineOpen ? 'outline' : 'thumbs';
+      const leftPanel = document.getElementById('side-left-panel');
+      if (leftPanel) {
+        leftPanel.classList.add('open');
+        switchTab(defaultTab);
+      }
+    }
   } catch(err) {
     hideLoading();
     console.error('[OK PDF] Errore apertura:', err);
@@ -1737,6 +1788,53 @@ async function printDocument() {
 
     /* Panel overlay (mobile) */
     
+
+
+    /* =====================================================
+       PANNELLO LATERALE UNIFICATO CON TAB
+    ===================================================== */
+    #side-left-panel { order: 1; border-right: 1px solid var(--border); border-left: none; }
+
+    .side-tab-bar {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      padding: 0 4px;
+    }
+
+    .side-tab {
+      flex: 1;
+      padding: 10px 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .side-tab:hover  { color: var(--text); }
+    .side-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .side-panel-close-btn {
+      flex-shrink: 0;
+      margin-left: auto;
+      color: var(--text-dim);
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex-direction: column;
+    }
+    .tab-content.active { display: flex; }
 
     /* =====================================================
        BARRA DI RICERCA
@@ -2336,31 +2434,42 @@ function updateThumbActive(pageNum) {
 /* =====================================================
    PANNELLI LATERALI (outline + search + thumbs)
 ===================================================== */
-function togglePanel(name) {
-  const panels  = ['outline-panel', 'search-panel', 'thumbs-panel'];
-  const panelId = `${name}-panel`;
-
-  // Se si chiude il pannello di ricerca, pulisci i marker
-  if (name === 'search') {
-    const panel = document.getElementById('search-panel');
-    if (panel && panel.classList.contains('open')) {
-      clearHighlights();
-    }
-  }
-
-  panels.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    if (id === panelId) {
-      const isOpen = el.classList.contains('open');
-      el.classList.toggle('open', !isOpen);
-      if (!isOpen && id === 'outline-panel') initOutline();
-      if (!isOpen && id === 'search-panel')  setTimeout(() => document.getElementById('search-input')?.focus(), 150);
-      if (!isOpen && id === 'thumbs-panel')  buildThumbs();
-    } else {
-      el.classList.remove('open');
-    }
+/* ── switchTab: mostra il tab nel pannello unificato ── */
+function switchTab(tabName) {
+  ['outline', 'thumbs'].forEach(t => {
+    document.getElementById('tab-' + t)?.classList.toggle('active', t === tabName);
+    document.getElementById('tab-content-' + t)?.classList.toggle('active', t === tabName);
   });
+  if (tabName === 'outline') initOutline();
+}
+
+/* ── togglePanel: gestisce pannelli laterali ── */
+function togglePanel(name) {
+  if (name === 'search') {
+    const sp = document.getElementById('search-panel');
+    if (!sp) return;
+    if (sp.classList.contains('open')) {
+      clearHighlights();
+      sp.classList.remove('open');
+    } else {
+      sp.classList.add('open');
+      setTimeout(() => document.getElementById('search-input')?.focus(), 100);
+    }
+    return;
+  }
+  // outline / thumbs → pannello unificato
+  const lp = document.getElementById('side-left-panel');
+  if (!lp) return;
+  const isOpen   = lp.classList.contains('open');
+  const activeTab = document.querySelector('.side-tab.active')?.dataset.tab;
+  if (!isOpen) {
+    lp.classList.add('open');
+    switchTab(name);
+  } else if (activeTab === name) {
+    lp.classList.remove('open');
+  } else {
+    switchTab(name);
+  }
 }
 
 /* =====================================================
@@ -2571,11 +2680,14 @@ function initEvents() {
 
   // Pannelli
   dom.btnThumbs.addEventListener('click',  () => togglePanel('thumbs'));
-  document.getElementById('btn-thumbs-close').addEventListener('click', () => togglePanel('thumbs'));
-  dom.btnOutline.addEventListener('click', () => togglePanel('outline'));
+    dom.btnOutline.addEventListener('click', () => togglePanel('outline'));
   dom.btnSearch.addEventListener('click',  () => togglePanel('search'));
-  document.getElementById('btn-outline-close').addEventListener('click', () => togglePanel('outline'));
-  document.getElementById('btn-search-close').addEventListener('click',  () => togglePanel('search'));
+    document.getElementById('btn-search-close').addEventListener('click',  () => togglePanel('search'));
+  document.getElementById('btn-left-panel-close')?.addEventListener('click', () => { document.getElementById('side-left-panel')?.classList.remove('open'); });
+  // Tab click handlers
+  document.querySelectorAll('.side-tab').forEach(btn => {
+    btn.addEventListener('click', () => togglePanel(btn.dataset.tab));
+  });
 
   // Fit
   let fitToggle = 'width';
