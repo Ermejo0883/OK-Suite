@@ -738,7 +738,7 @@ async function renderPageIntoScroller(scroller, pageNum) {
 }
 
 // Renderizza TUTTE le pagine in sequenza
-async function renderAllPages() {
+async function renderAllPages(silent = false) {
   const scroller = buildScrollContainer();
 
   // Renderizza le prime 3 pagine subito, le altre lazy mentre si scorre
@@ -749,7 +749,7 @@ async function renderAllPages() {
 
   hideLoading();
   updateUI();
-  showToast('Documento caricato', 'success');
+  if (!silent) showToast('Documento caricato', 'success');
   console.log('[OK PDF] Pagine:', state.totalPages);
 
   // Renderizza il resto in background senza bloccare la UI
@@ -808,7 +808,7 @@ function initScrollObserver(scroller) {
 async function rerenderAllPages() {
   if (!state.pdfDoc) return;
   showLoading('Ridisegno con nuovo zoom…');
-  await renderAllPages();
+  await renderAllPages(true); // silent — no toast
   hideLoading();
 }
 
