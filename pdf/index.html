@@ -140,8 +140,8 @@
     /* =====================================================
        VIEWER AREA
     ===================================================== */
-    #viewer-area { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
-    #pdf-viewer  { width: 100%; height: 100%; }
+    #viewer-area { flex: 1; display: flex; flex-direction: row; overflow: hidden; background: var(--bg); }
+    #pdf-viewer  { flex: 1; min-width: 0; height: 100%; overflow: hidden; }
 
     /* =====================================================
        PLACEHOLDER
@@ -301,20 +301,19 @@
        SIDE PANELS (Sommario + Cerca)
     ===================================================== */
     .side-panel {
-      position: absolute;
-      top: 0; left: 0; bottom: 0;
-      width: 280px;
+      position: relative;
+      width: 0;
+      min-width: 0;
+      flex-shrink: 0;
       background: var(--surface);
       border-right: 1px solid var(--border);
-      z-index: 20;
       display: flex;
       flex-direction: column;
-      transform: translateX(-100%);
-      transition: transform 0.25s ease;
-      box-shadow: 4px 0 16px rgba(0,0,0,0.3);
+      overflow: hidden;
+      transition: width 0.25s ease;
     }
 
-    .side-panel.open { transform: translateX(0); }
+    .side-panel.open { width: 260px; min-width: 260px; }
 
     .side-panel-header {
       display: flex;
@@ -514,29 +513,7 @@
     /* =====================================================
        PANNELLO LATERALE (Sommario)
     ===================================================== */
-    #side-panel {
-      position: absolute;
-      top: 0; left: 0; bottom: 0;
-      width: 280px;
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      z-index: 80;
-      transform: translateX(-100%);
-      transition: transform 0.25s ease;
-      box-shadow: 4px 0 16px rgba(0,0,0,0.4);
-    }
-    #side-panel.open { transform: translateX(0); }
-
-    .side-panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
+    /* #side-panel legacy — replaced by .side-panel flex layout */
     .side-panel-title {
       font-size: 14px;
       font-weight: 600;
@@ -1336,7 +1313,7 @@
 const APP_CONFIG = {
   ADS_ENABLED: false,
   IS_PRO:      false,
-  APP_VERSION: '1.0.4',
+  APP_VERSION: '1.0.5',
   APP_NAME:    'OK Suite - PDF',
 };
 
@@ -1785,20 +1762,7 @@ async function printDocument() {
     /* =====================================================
        PANNELLO LATERALE (Sommario)
     ===================================================== */
-    #side-panel {
-      position: absolute;
-      top: 0; left: 0; bottom: 0;
-      width: 280px;
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      z-index: 80;
-      transform: translateX(-100%);
-      transition: transform 0.25s ease;
-      box-shadow: 4px 0 16px rgba(0,0,0,0.4);
-    }
-    #side-panel.open { transform: translateX(0); }
+    
 
     .side-panel-header {
       display: flex;
