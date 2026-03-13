@@ -2125,6 +2125,20 @@ async function searchInDocument(query) {
     // Quindi:  canvasX = pdfX * scale
     //          canvasY = vp.height - pdfY * scale   (asse Y invertito)
 
+    // DEBUG — logga i primi item della pagina 1
+    if (pageNum === 1 && content.items.length > 0) {
+      const sample = content.items.slice(0, 3);
+      sample.forEach((it, i) => {
+        console.log('[SEARCH DEBUG] item', i, JSON.stringify({
+          str: it.str,
+          transform: it.transform,
+          width: it.width,
+          height: it.height,
+        }));
+      });
+      console.log('[SEARCH DEBUG] viewport', { w: vp.width, h: vp.height, scale });
+    }
+
     content.items.forEach(item => {
       if (!item.str) return;
       const lower = item.str.toLowerCase();
@@ -2145,6 +2159,7 @@ async function searchInDocument(query) {
         const rectIdx = search.highlights[pageNum].length;
         search.highlights[pageNum].push({ cx, cy, cw, ch });
         search.results.push({ page: pageNum, rectIdx });
+        console.log('[SEARCH DEBUG] match p.' + pageNum + ' "' + item.str + '" → cx=' + cx.toFixed(1) + ' cy=' + cy.toFixed(1) + ' cw=' + cw.toFixed(1) + ' ch=' + ch.toFixed(1) + ' | vp.h=' + vp.height.toFixed(0));
         pos++;
       }
     });
