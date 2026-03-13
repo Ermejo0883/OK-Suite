@@ -1336,7 +1336,7 @@
 const APP_CONFIG = {
   ADS_ENABLED: false,
   IS_PRO:      false,
-  APP_VERSION: '1.0.3',
+  APP_VERSION: '1.0.4',
   APP_NAME:    'OK Suite - PDF',
 };
 
@@ -1554,7 +1554,7 @@ async function renderPageIntoScroller(scroller, pageNum) {
   if (search.query && search.highlights && search.highlights[pageNum]) {
     const aResult = search.results[search.current] || {};
     const aIdx = aResult.page === pageNum ? aResult.rectIdx : -1;
-    drawHighlights(overlay, search.highlights[pageNum], aIdx);
+    drawMarkers(overlay, search.highlights[pageNum], aIdx);
   }
 }
 
@@ -2106,17 +2106,40 @@ const search = {
    Il canvas overlay ha le stesse dimensioni del canvas PDF renderizzato,
    quindi moltiplichiamo per renderScale e invertiamo Y.
 ── */
-function drawHighlights(overlay, rects, activeIdx = -1) {
-  // rects contengono già coordinate canvas (cx,cy,cw,ch) in pixel
+function drawMarkers(overlay, rects, activeIdx = -1) {
+  // rects: {cx, cy, cw, ch} in canvas pixels
+  // Disegna un marcatore triangolare sul bordo sinistro all'altezza di ogni riga
   const ctx = overlay.getContext('2d');
   ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+  // Raggruppa per riga (cy simile = stessa riga visiva) per evitare doppioni
+  const drawn = new Set();
   rects.forEach((r, i) => {
+    const rowKey = Math.round(r.cy / 4);   // bucket di 4px
     const isActive = i === activeIdx;
-    ctx.fillStyle   = isActive ? 'rgba(255,140,0,0.50)' : 'rgba(255,220,0,0.35)';
-    ctx.strokeStyle = isActive ? 'rgba(220,80,0,1.0)'   : 'rgba(160,120,0,0.7)';
-    ctx.lineWidth   = isActive ? 2 : 1;
-    ctx.fillRect  (r.cx, r.cy, r.cw, r.ch);
-    ctx.strokeRect(r.cx, r.cy, r.cw, r.ch);
+    const color = isActive ? '#FF6B00' : '#FFD600';
+    const markerH = Math.max(r.ch, 10);
+    const markerW = markerH * 0.6;
+    const y = r.cy + r.ch / 2;             // centro verticale della riga
+
+    // Triangolo ▶ sul bordo sinistro
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(2, y - markerH * 0.4);
+    ctx.lineTo(2 + markerW, y);
+    ctx.lineTo(2, y + markerH * 0.4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Linea orizzontale sottile che parte dal triangolo
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = isActive ? 2 : 1.5;
+    ctx.globalAlpha = isActive ? 0.9 : 0.55;
+    ctx.beginPath();
+    ctx.moveTo(2 + markerW, y);
+    ctx.lineTo(overlay.width - 4, y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   });
 }
 
@@ -2220,7 +2243,7 @@ function applyAllHighlights(activePage = -1, activeRectIdx = -1) {
     const overlay = wrapper.querySelector('.pdf-overlay');
     if (!overlay) return;
     const aIdx = pageNum === activePage ? activeRectIdx : -1;
-    drawHighlights(overlay, search.highlights[pageNum], aIdx);
+    drawMarkers(overlay, search.highlights[pageNum], aIdx);
   });
 }
 
@@ -2452,6 +2475,14 @@ function togglePanel(name) {
   const panels  = ['outline-panel', 'search-panel', 'thumbs-panel'];
   const panelId = `${name}-panel`;
 
+  // Se si chiude il pannello di ricerca, pulisci i marker
+  if (name === 'search') {
+    const panel = document.getElementById('search-panel');
+    if (panel && panel.classList.contains('open')) {
+      clearHighlights();
+    }
+  }
+
   panels.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -2648,7 +2679,7 @@ function initEvents() {
   // Toolbar
   dom.btnPrint.addEventListener('click', printDocument);
   dom.btnShare.addEventListener('click', shareDocument);
-  dom.btnClose.addEventListener('click', () => { stopReading(); clearSearch(); resetState(); updateUI(); showToast('Documento chiuso', 'info'); });
+  dom.btnClose.addEventListener('click', () => { stopReading(); clearSearch(); clearHighlights(); resetState(); updateUI(); showToast('Documento chiuso', 'info'); });
 
   // Navigazione pagine (scroll to page)
   dom.btnPrev.addEventListener('click', () => goToPage(state.currentPage - 1));
