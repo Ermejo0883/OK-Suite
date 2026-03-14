@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.takeiteasy.oksuite.pdf",
+    "sha256_cert_fingerprints": [
+      "F6:A3:18:6C:18:5A:9A:97:CC:2F:C9:A6:63:29:6D:F1:88:95:00:8F:60:4A:00:17:51:A3:92:ED:A1:FF:36:0E"
+    ]
+  }
+}]
