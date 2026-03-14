@@ -616,6 +616,70 @@
     }
     .tab-content.active { display: flex; }
 
+
+    /* =====================================================
+       TOOLBAR MOBILE RESPONSIVE
+    ===================================================== */
+
+    /* Menu overflow "⋯" — nascosto su desktop */
+    #btn-overflow { display: none; }
+    #overflow-menu {
+      position: absolute;
+      top: calc(var(--toolbar-h) - 4px);
+      right: 56px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      z-index: 200;
+      min-width: 180px;
+      padding: 4px 0;
+      display: none;
+    }
+    #overflow-menu.open { display: block; }
+    .overflow-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .12s;
+      background: none;
+      border: none;
+      width: 100%;
+      font-family: 'DM Sans', sans-serif;
+      text-align: left;
+    }
+    .overflow-item:hover { background: var(--surface2); }
+    .overflow-item svg { flex-shrink: 0; color: var(--text-dim); }
+
+    @media (max-width: 600px) {
+      /* Brand: solo icona, niente testo */
+      .brand-text { display: none; }
+      .brand-icon  { width: 30px; height: 30px; }
+
+      /* Titolo: solo doc-title, no subtitle */
+      .doc-subtitle { display: none; }
+      .doc-title    { font-size: 12px; }
+
+      /* Pulsanti primari visibili su mobile */
+      /* btn-open, btn-outline, btn-search, btn-close, btn-settings: sempre visibili */
+      /* Pulsanti secondari nascosti su mobile (vanno nel menu ⋯) */
+      #btn-print, #btn-share, #btn-fit, #btn-tts,
+      .toolbar-sep { display: none !important; }
+
+      /* Mostra pulsante overflow ⋯ */
+      #btn-overflow { display: flex !important; }
+
+      /* Riduci padding toolbar */
+      #toolbar { padding: 0 8px; gap: 4px; }
+
+      /* Btn-icon più compatti */
+      .btn-icon { width: 36px; height: 36px; }
+    }
+
     /* =====================================================
        BARRA DI RICERCA
     ===================================================== */
@@ -945,6 +1009,13 @@
           </svg>
         </button>
 
+        <!-- Overflow menu ⋯ (mobile: stampa, condividi, adatta, TTS) -->
+        <button class="btn-icon" id="btn-overflow" title="Altro" aria-label="Altro" style="display:none">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="5"  cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>
+          </svg>
+        </button>
+
         <div class="toolbar-sep"></div>
 
         <!-- Chiudi — sempre ultimo a destra -->
@@ -967,6 +1038,27 @@
       </button>
     </div>
   </header>
+
+  <!-- Overflow menu dropdown (mobile) -->
+  <div id="overflow-menu" role="menu">
+    <button class="overflow-item" id="omenu-print">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Stampa
+    </button>
+    <button class="overflow-item" id="omenu-share">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      Condividi
+    </button>
+    <button class="overflow-item" id="omenu-fit">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      Adatta larghezza
+    </button>
+    <button class="overflow-item" id="omenu-tts">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+      Leggi ad alta voce
+    </button>
+  </div>
+
 
   <!-- ================================================
        VISUALIZZATORE
@@ -1313,7 +1405,7 @@
 const APP_CONFIG = {
   ADS_ENABLED: false,
   IS_PRO:      false,
-  APP_VERSION: '1.1.5',
+  APP_VERSION: '1.1.6',
   APP_NAME:    'OK Suite - PDF',
 };
 
@@ -1863,6 +1955,70 @@ async function printDocument() {
       flex-direction: column;
     }
     .tab-content.active { display: flex; }
+
+
+    /* =====================================================
+       TOOLBAR MOBILE RESPONSIVE
+    ===================================================== */
+
+    /* Menu overflow "⋯" — nascosto su desktop */
+    #btn-overflow { display: none; }
+    #overflow-menu {
+      position: absolute;
+      top: calc(var(--toolbar-h) - 4px);
+      right: 56px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      z-index: 200;
+      min-width: 180px;
+      padding: 4px 0;
+      display: none;
+    }
+    #overflow-menu.open { display: block; }
+    .overflow-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .12s;
+      background: none;
+      border: none;
+      width: 100%;
+      font-family: 'DM Sans', sans-serif;
+      text-align: left;
+    }
+    .overflow-item:hover { background: var(--surface2); }
+    .overflow-item svg { flex-shrink: 0; color: var(--text-dim); }
+
+    @media (max-width: 600px) {
+      /* Brand: solo icona, niente testo */
+      .brand-text { display: none; }
+      .brand-icon  { width: 30px; height: 30px; }
+
+      /* Titolo: solo doc-title, no subtitle */
+      .doc-subtitle { display: none; }
+      .doc-title    { font-size: 12px; }
+
+      /* Pulsanti primari visibili su mobile */
+      /* btn-open, btn-outline, btn-search, btn-close, btn-settings: sempre visibili */
+      /* Pulsanti secondari nascosti su mobile (vanno nel menu ⋯) */
+      #btn-print, #btn-share, #btn-fit, #btn-tts,
+      .toolbar-sep { display: none !important; }
+
+      /* Mostra pulsante overflow ⋯ */
+      #btn-overflow { display: flex !important; }
+
+      /* Riduci padding toolbar */
+      #toolbar { padding: 0 8px; gap: 4px; }
+
+      /* Btn-icon più compatti */
+      .btn-icon { width: 36px; height: 36px; }
+    }
 
     /* =====================================================
        BARRA DI RICERCA
@@ -2658,6 +2814,39 @@ function renderHistory() {
 /* =====================================================
    DRAG & DROP
 ===================================================== */
+
+/* ── Overflow menu mobile ── */
+function initOverflowMenu() {
+  const btnOverflow = document.getElementById('btn-overflow');
+  const menu        = document.getElementById('overflow-menu');
+  if (!btnOverflow || !menu) return;
+
+  btnOverflow.addEventListener('click', e => {
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+
+  // Chiudi cliccando fuori
+  document.addEventListener('click', () => menu.classList.remove('open'));
+
+  // Collega voci menu alle azioni esistenti
+  document.getElementById('omenu-print')?.addEventListener('click', () => {
+    menu.classList.remove('open');
+    document.getElementById('btn-print')?.click();
+  });
+  document.getElementById('omenu-share')?.addEventListener('click', () => {
+    menu.classList.remove('open');
+    document.getElementById('btn-share')?.click();
+  });
+  document.getElementById('omenu-fit')?.addEventListener('click', () => {
+    menu.classList.remove('open');
+    document.getElementById('btn-fit')?.click();
+  });
+  document.getElementById('omenu-tts')?.addEventListener('click', () => {
+    menu.classList.remove('open');
+    document.getElementById('btn-tts')?.click();
+  });
+}
 function initDragDrop() {
   const area = dom.viewerArea;
   area.addEventListener('dragenter', e => { e.preventDefault(); area.classList.add('drag-over'); });
@@ -2784,6 +2973,7 @@ function initApp() {
   initDragDrop();
   initEvents();
   initSettingsEvents();
+  initOverflowMenu();
   const _initS = loadSettings();
   applyTheme(_initS.theme || 'dark');
   applyPanelPos(_initS.panelPos || 'left');
