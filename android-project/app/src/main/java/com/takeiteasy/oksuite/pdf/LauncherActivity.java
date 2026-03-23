@@ -15,6 +15,7 @@
  */
 package com.takeiteasy.oksuite.pdf;
 
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Build;
@@ -44,10 +45,29 @@ public class LauncherActivity
 
     @Override
     protected Uri getLaunchingUrl() {
-        // Get the original launch Url.
         Uri uri = super.getLaunchingUrl();
 
-        
+        // Se l'intent è ACTION_VIEW con un PDF, passa l'URI al web tramite ?file=
+        String action = getIntent().getAction();
+        Uri dataUri = getIntent().getData();
+
+        if (Intent.ACTION_VIEW.equals(action) && dataUri != null) {
+            String mimeType = getIntent().getType();
+            if (mimeType == null) {
+                mimeType = getContentResolver().getType(dataUri);
+            }
+            boolean isPdf = "application/pdf".equals(mimeType)
+                    || (dataUri.getLastPathSegment() != null
+                        && dataUri.getLastPathSegment().toLowerCase().endsWith(".pdf"));
+            if (isPdf) {
+                // Concede l'accesso al contenuto a Chrome
+                grantUriPermission("com.android.chrome",
+                        dataUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                uri = uri.buildUpon()
+                        .appendQueryParameter("file", dataUri.toString())
+                        .build();
+            }
+        }
 
         return uri;
     }
