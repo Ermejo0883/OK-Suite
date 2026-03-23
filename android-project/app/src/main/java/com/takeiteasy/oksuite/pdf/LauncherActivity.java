@@ -20,6 +20,7 @@ import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -27,19 +28,58 @@ import java.io.InputStream;
 public class LauncherActivity
         extends com.google.androidbrowserhelper.trusted.LauncherActivity {
 
+    private static final String TAG = "OKPdf";
     private LocalPdfServer localPdfServer;
+    private int localPdfPort = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Legge il PDF PRIMA di super.onCreate() che chiama getLaunchingUrl()
+        Intent intent = getIntent();
+        if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
+            initLocalPdfServer(intent.getData(), intent.getType());
+        }
+
         super.onCreate(savedInstanceState);
-        // Setting an orientation crashes the app due to the transparent background on Android 8.0
-        // Oreo and below. We only set the orientation on Oreo and above. This only affects the
-        // splash screen and Chrome will still respect the orientation.
-        // See https://github.com/GoogleChromeLabs/bubblewrap/issues/496 for details.
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         } else {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        }
+    }
+
+    private void initLocalPdfServer(Uri dataUri, String mimeType) {
+        try {
+            if (mimeType == null) {
+                mimeType = getContentResolver().getType(dataUri);
+            }
+            boolean isPdf = "application/pdf".equals(mimeType)
+                    || (dataUri.getLastPathSegment() != null
+                        && dataUri.getLastPathSegment().toLowerCase().endsWith(".pdf"));
+            if (!isPdf) {
+                Log.w(TAG, "initLocalPdfServer: non è un PDF, mimeType=" + mimeType);
+                return;
+            }
+
+            Log.i(TAG, "initLocalPdfServer: lettura da " + dataUri);
+            InputStream is = getContentResolver().openInputStream(dataUri);
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = is.read(chunk)) != -1) {
+                buffer.write(chunk, 0, bytesRead);
+            }
+            is.close();
+            byte[] pdfBytes = buffer.toByteArray();
+            Log.i(TAG, "initLocalPdfServer: letti " + pdfBytes.length + " byte");
+
+            localPdfServer = new LocalPdfServer(pdfBytes);
+            localPdfServer.start();
+            localPdfPort = localPdfServer.getPort();
+            Log.i(TAG, "initLocalPdfServer: server avviato su porta " + localPdfPort);
+
+        } catch (Exception e) {
+            Log.e(TAG, "initLocalPdfServer ERRORE: " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
     }
 
@@ -56,47 +96,25 @@ public class LauncherActivity
     protected Uri getLaunchingUrl() {
         Uri uri = super.getLaunchingUrl();
 
-        // Se l'intent è ACTION_VIEW con un PDF, servi il file via localhost
+        if (localPdfPort > 0) {
+            // Server avviato: usa URL localhost fetchabile da Chrome
+            String localUrl = "http://localhost:" + localPdfPort + "/file.pdf";
+            Log.i(TAG, "getLaunchingUrl: uso localhost -> " + localUrl);
+            return uri.buildUpon()
+                    .appendQueryParameter("file", localUrl)
+                    .build();
+        }
+
+        // Fallback: passa content:// (non funzionerà, ma almeno logghiamo)
         String action = getIntent().getAction();
         Uri dataUri = getIntent().getData();
-
         if (Intent.ACTION_VIEW.equals(action) && dataUri != null) {
-            String mimeType = getIntent().getType();
-            if (mimeType == null) {
-                mimeType = getContentResolver().getType(dataUri);
-            }
-            boolean isPdf = "application/pdf".equals(mimeType)
-                    || (dataUri.getLastPathSegment() != null
-                        && dataUri.getLastPathSegment().toLowerCase().endsWith(".pdf"));
-            if (isPdf) {
-                try {
-                    // Legge i byte del PDF tramite ContentResolver
-                    InputStream is = getContentResolver().openInputStream(dataUri);
-                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-                    byte[] chunk = new byte[8192];
-                    int bytesRead;
-                    while ((bytesRead = is.read(chunk)) != -1) {
-                        buffer.write(chunk, 0, bytesRead);
-                    }
-                    is.close();
-                    byte[] pdfBytes = buffer.toByteArray();
-
-                    // Avvia un server HTTP locale e passa l'URL localhost al web
-                    localPdfServer = new LocalPdfServer(pdfBytes);
-                    localPdfServer.start();
-                    int port = localPdfServer.getPort();
-                    uri = uri.buildUpon()
-                            .appendQueryParameter("file", "http://localhost:" + port + "/file.pdf")
-                            .build();
-                } catch (Exception e) {
-                    // Fallback: passa l'URI content:// direttamente (potrebbe non funzionare)
-                    grantUriPermission("com.android.chrome",
-                            dataUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    uri = uri.buildUpon()
-                            .appendQueryParameter("file", dataUri.toString())
-                            .build();
-                }
-            }
+            Log.w(TAG, "getLaunchingUrl: fallback a content:// " + dataUri);
+            grantUriPermission("com.android.chrome",
+                    dataUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            return uri.buildUpon()
+                    .appendQueryParameter("file", dataUri.toString())
+                    .build();
         }
 
         return uri;
