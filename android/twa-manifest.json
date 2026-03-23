@@ -1,0 +1,57 @@
+{
+  "packageId": "com.takeiteasy.oksuite.pdf",
+  "host": "pdf.perme.me",
+  "name": "OK Suite - PDF",
+  "launcherName": "OKPdf",
+  "display": "standalone",
+  "orientation": "any",
+  "themeColor": "#0f1117",
+  "navigationColor": "#0f1117",
+  "navigationColorDark": "#0f1117",
+  "navigationDividerColor": "#0f1117",
+  "navigationDividerColorDark": "#0f1117",
+  "backgroundColor": "#0f1117",
+  "enableNotifications": false,
+  "startUrl": "/index.html",
+  "iconUrl": "https://pdf.perme.me/icons/icon-512.png",
+  "maskableIconUrl": "https://pdf.perme.me/icons/icon-512.png",
+  "monochromeIconUrl": null,
+  "appVersion": "1.1.28",
+  "appVersionCode": 18,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "oksuite-pdf"
+  },
+  "splashScreenFadeOutDuration": 300,
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://pdf.perme.me/",
+  "minSdkVersion": 21,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://pdf.perme.me/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": { "enabled": false },
+    "playBilling": { "enabled": false }
+  },
+  "alphaDependencies": { "enabled": false },
+  "enableCrashReporting": false,
+  "shareTarget": {
+    "action": "/share-pdf",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": null,
+      "text": null,
+      "url": null,
+      "files": [
+        {
+          "name": "file",
+          "accept": ["application/pdf", ".pdf"]
+        }
+      ]
+    }
+  }
+}

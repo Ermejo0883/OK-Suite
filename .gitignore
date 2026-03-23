@@ -1,0 +1,10 @@
+# Dipendenze Node
+node_modules/
+
+# File di sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Log
+*.log

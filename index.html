@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f1117" />
+  <meta name="description" content="OK Suite PDF - Visualizzatore PDF professionale" />
+  <title>OK Suite - PDF</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="favicon.ico" sizes="any" />
+  <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="icon" href="icons/favicon-16.png" type="image/png" sizes="16x16" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OKPdf" />
+  <link rel="apple-touch-icon" href="icons/favicon-180.png" />
+  <meta name="msapplication-TileColor" content="#0f1117" />
+  <meta name="msapplication-TileImage" content="icons/icon-192.png" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module" id="pdfjs-script"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1c26; --surface2: #22253a; --border: #2e3150;
+      --accent: #4f8ef7; --accent-dim: #3a6fd8; --badge-pdf: #e53935;
+      --text: #e8eaf6; --text-dim: #8892b0; --success: #43a047;
+      --warning: #fb8c00; --danger: #e53935; --radius: 12px; --radius-sm: 8px;
+      --toolbar-h: 60px; --filetitle-h: 32px; --statusbar-h: 52px; --admob-h: 0px;
+    }
+    [data-theme="light"] #pdf-scroller { background: #909090 !important; }
+    [data-theme="light"] {
+      --bg: #f0f2f5; --surface: #ffffff; --surface2: #e8eaed; --border: #d0d5dd;
+      --accent: #2563eb; --accent-dim: #1d4ed8; --badge-pdf: #e53935;
+      --text: #1a1d2e; --text-dim: #6b7280; --success: #16a34a;
+      --warning: #d97706; --danger: #dc2626;
+    }
+    html, body { height: 100%; font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; -webkit-font-smoothing: antialiased; }
+    #app { display: flex; flex-direction: column; height: 100dvh; position: relative; }
+
+    /* TOOLBAR */
+    #toolbar { height: var(--toolbar-h); background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; gap: 8px; flex-shrink: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,.4); }
+    .toolbar-brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .brand-icon { width: 34px; height: 34px; flex-shrink: 0; }
+    .brand-text { display: flex; flex-direction: column; line-height: 1; }
+    .brand-name { font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: .3px; }
+    .brand-badge { display: inline-flex; align-items: center; background: var(--badge-pdf); color: #fff; font-size: 9px; font-weight: 700; letter-spacing: .8px; padding: 1px 5px; border-radius: 3px; margin-top: 2px; width: fit-content; }
+    .toolbar-title { flex: 1; min-width: 0; padding: 0 8px; }
+    .doc-title { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .doc-subtitle { font-size: 11px; color: var(--text); margin-top: 0; line-height: 1.5; }
+    .toolbar-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .btn-icon { width: 38px; height: 38px; border: none; background: transparent; color: var(--text-dim); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, color .15s; -webkit-tap-highlight-color: transparent; }
+    .btn-icon:hover { background: var(--surface2); color: var(--text); }
+    .btn-icon:active { background: var(--border); }
+    .btn-icon.primary { color: var(--accent); }
+    .btn-icon.primary:hover { background: rgba(79,142,247,.12); }
+    .btn-icon[disabled] { opacity: .35; cursor: not-allowed; pointer-events: none; }
+    .btn-icon.danger-icon:hover { background: rgba(229,57,53,.15); color: var(--danger); }
+    .btn-icon svg { pointer-events: none; }
+    .toolbar-sep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
+
+    /* FILE TITLE BAR */
+    #file-titlebar { height: var(--filetitle-h); background: var(--surface2); border-bottom: 1px solid var(--border); display: none; align-items: center; padding: 0 16px; gap: 8px; flex-shrink: 0; }
+    #file-titlebar.visible { display: flex; }
+    #file-titlebar-name { font-size: 12px; font-weight: 500; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+
+    /* VIEWER */
+    #viewer-area { flex: 1; display: flex; flex-direction: row; overflow: hidden; background: var(--bg); }
+    #pdf-viewer { flex: 1; min-width: 0; height: 100%; overflow: hidden; }
+
+    /* PLACEHOLDER */
+    #placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; background: var(--bg); z-index: 10; padding: 32px; text-align: center; }
+    #placeholder.hidden { display: none; }
+    .placeholder-mascot { width: 108px; height: 108px; opacity: .9; animation: float 3s ease-in-out infinite; }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .placeholder-title { font-size: 20px; font-weight: 700; color: var(--text); }
+    .placeholder-sub { font-size: 14px; color: var(--text-dim); line-height: 1.65; max-width: 280px; }
+    .btn-open-main { display: flex; align-items: center; gap: 10px; background: var(--accent); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: var(--radius); padding: 13px 28px; cursor: pointer; transition: background .15s, transform .1s; -webkit-tap-highlight-color: transparent; box-shadow: 0 4px 16px rgba(79,142,247,.35); }
+    .btn-open-main:hover { background: var(--accent-dim); }
+    .btn-open-main:active { transform: scale(.97); }
+    .drop-hint { font-size: 12px; color: var(--text-dim); opacity: .7; }
+    #viewer-area.drag-over #placeholder { background: rgba(79,142,247,.05); outline: 2px dashed var(--accent); outline-offset: -10px; }
+
+    /* LOADING */
+    #loading-overlay { position: absolute; inset: 0; background: rgba(15,17,23,.88); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 50; backdrop-filter: blur(4px); }
+    #loading-overlay.hidden { display: none; }
+    .spinner { width: 44px; height: 44px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 14px; color: var(--text-dim); font-weight: 500; }
+
+    /* STATUS BAR */
+    #statusbar { height: var(--statusbar-h); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 12px; flex-shrink: 0; padding: 0 16px; box-shadow: 0 -2px 12px rgba(0,0,0,.3); }
+    .btn-nav { width: 36px; height: 36px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s, border-color .15s; -webkit-tap-highlight-color: transparent; flex-shrink: 0; }
+    .btn-nav:hover:not(:disabled) { background: var(--border); border-color: var(--accent); }
+    .btn-nav:active:not(:disabled) { background: var(--surface); }
+    .btn-nav:disabled { opacity: .3; cursor: not-allowed; }
+    .page-info { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); }
+    #page-input { width: 48px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; text-align: center; padding: 5px 4px; border-radius: 6px; outline: none; transition: border-color .15s; }
+    #page-input:focus { border-color: var(--accent); }
+    #page-input::-webkit-inner-spin-button, #page-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .statusbar-sep { width: 1px; height: 20px; background: var(--border); }
+    .zoom-indicator { font-size: 12px; font-weight: 500; color: var(--text-dim); min-width: 44px; text-align: center; }
+
+    /* ADMOB */
+    #admob-banner { height: var(--admob-h); background: var(--surface2); display: none; align-items: center; justify-content: center; font-size: 11px; color: var(--text-dim); border-top: 1px solid var(--border); flex-shrink: 0; }
+
+    /* TOAST */
+    #toast-container { position: fixed; bottom: calc(var(--statusbar-h) + var(--admob-h) + 12px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 200; pointer-events: none; }
+    .toast { background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 500; padding: 10px 18px; border-radius: 20px; border-left: 3px solid var(--accent); box-shadow: 0 4px 20px rgba(0,0,0,.5); opacity: 0; transform: translateY(10px) scale(.97); animation: t-in .25s ease forwards, t-out .3s ease 2.5s forwards; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.success { border-left-color: var(--success); }
+    .toast.warning { border-left-color: var(--warning); }
+    @keyframes t-in { to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes t-out { to { opacity: 0; transform: translateY(6px) scale(.97); } }
+
+    #file-input { display: none; }
+    @media (max-width: 360px) { .brand-text { display: none; } }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+    /* SIDE PANELS */
+    .side-panel { position: relative; width: 0; min-width: 0; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: width 0.25s ease; }
+    .side-panel.open { width: 260px; min-width: 260px; }
+    .side-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; font-size: 13px; font-weight: 600; color: var(--text); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .outline-list { list-style: none; overflow-y: auto; flex: 1; padding: 8px 0; }
+    .outline-btn { background: none; border: none; color: var(--text-dim); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 400; text-align: left; padding: 7px 14px; cursor: pointer; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background 0.12s, color 0.12s; -webkit-tap-highlight-color: transparent; }
+    .outline-btn:hover { background: var(--surface2); color: var(--text); }
+    .outline-sublist { list-style: none; }
+    .outline-empty { color: var(--text-dim); font-size: 12px; padding: 16px; text-align: center; }
+    .search-controls { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    #search-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; padding: 8px 10px; border-radius: var(--radius-sm); outline: none; transition: border-color 0.15s; }
+    #search-input:focus { border-color: var(--accent); }
+    #search-input::placeholder { color: var(--text-dim); }
+    .search-nav { display: flex; align-items: center; gap: 6px; }
+    #search-count { flex: 1; font-size: 11px; color: var(--text-dim); }
+    .thumbs-list { overflow-y: auto; flex: 1; padding: 10px 8px; display: flex; flex-direction: column; gap: 10px; }
+    .thumb-item { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; padding: 6px; border-radius: var(--radius-sm); border: 2px solid transparent; transition: border-color 0.15s, background 0.15s; -webkit-tap-highlight-color: transparent; }
+    .thumb-item:hover { background: var(--surface2); }
+    .thumb-item.active { border-color: var(--accent); }
+    .thumb-canvas { display: block; width: 100%; max-width: 200px; height: auto; box-shadow: 0 2px 6px rgba(0,0,0,0.4); background: white; border-radius: 2px; }
+    .thumb-num { font-size: 11px; color: var(--text-dim); }
+    .thumb-item.active .thumb-num { color: var(--accent); font-weight: 600; }
+    .thumb-loading { width: 160px; height: 110px; background: var(--surface2); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-dim); }
+    .btn-icon.tts-active { color: var(--accent); background: rgba(79,142,247,0.12); }
+    .btn-icon.tts-active:hover { background: rgba(79,142,247,0.2); }
+    .btn-icon.fit-active { color: var(--accent); }
+
+    /* PWA BANNER */
+    #pwa-banner { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface2); border-top: 1px solid var(--border); padding: 8px 16px; display: flex; align-items: center; gap: 10px; z-index: 150; transform: translateY(100%); animation: banner-in .3s ease .8s forwards; }
+    #pwa-banner.hidden { display: none !important; }
+    @keyframes banner-in { to { transform: translateY(0); } }
+    .pwa-banner-icon { width: 28px; height: 28px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: var(--bg); }
+    .pwa-banner-icon img { width: 100%; height: 100%; object-fit: contain; }
+    .pwa-banner-text { flex: 1; min-width: 0; }
+    .pwa-banner-title { font-size: 12px; font-weight: 600; color: var(--text); }
+    .pwa-banner-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+    .btn-pwa-install { background: var(--accent); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; padding: 5px 12px; cursor: pointer; white-space: nowrap; transition: opacity .15s; -webkit-tap-highlight-color: transparent; }
+    .btn-pwa-install:hover { opacity: .85; }
+    .pwa-banner-nodisplay { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); cursor: pointer; white-space: nowrap; flex-shrink: 0; user-select: none; }
+    .pwa-banner-nodisplay input { accent-color: var(--accent); cursor: pointer; }
+    .pwa-banner-nodisplay:hover { color: var(--text); }
+    .btn-pwa-dismiss { width: 26px; height: 26px; border: none; background: transparent; color: var(--text-dim); display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 4px; transition: background .12s, color .12s; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+    .btn-pwa-dismiss:hover { background: var(--border); color: var(--text); }
+
+    /* PANEL UNIFIED */
+    #side-left-panel { flex-shrink: 0; }
+    #viewer-area[data-panel-pos="left"] #side-left-panel { order: 1; border-right: 1px solid var(--border); border-left: none; }
+    #viewer-area[data-panel-pos="right"] #side-left-panel { order: 3; border-left: 1px solid var(--border); border-right: none; }
+    #pdf-viewer { order: 2; }
+    .side-tab-bar { display: flex; align-items: center; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; padding: 0 4px; }
+    .side-tab { flex: 1; padding: 10px 8px; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; color: var(--text-dim); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: color .15s, border-color .15s; white-space: nowrap; }
+    .side-tab:hover { color: var(--text); }
+    .side-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .side-panel-close-btn { flex-shrink: 0; margin-left: auto; color: var(--text-dim); }
+    .tab-content { display: none; flex: 1; overflow-y: auto; overflow-x: hidden; flex-direction: column; }
+    .tab-content.active { display: flex; }
+    #outline-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .outline-item { display: flex; flex-direction: column; }
+
+    /* OVERFLOW MENU */
+    #btn-overflow { display: none; }
+    #overflow-menu { position: absolute; top: calc(var(--toolbar-h) - 4px); right: 56px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 200; min-width: 180px; padding: 4px 0; display: none; }
+    #overflow-menu.open { display: block; }
+    .overflow-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 13px; color: var(--text); cursor: pointer; transition: background .12s; background: none; border: none; width: 100%; font-family: 'DM Sans', sans-serif; text-align: left; }
+    .overflow-item:hover { background: var(--surface2); }
+    .overflow-item svg { flex-shrink: 0; color: var(--text-dim); }
+
+    /* MOBILE */
+    @media (max-width: 600px) {
+      .brand-text { display: none; }
+      .brand-icon { width: 30px; height: 30px; }
+      .doc-subtitle { display: none; }
+      .doc-title { font-size: 12px; }
+      #btn-print, #btn-share, #btn-fit, #btn-tts, .toolbar-sep { display: none !important; }
+      #btn-overflow { display: flex !important; }
+      #toolbar { padding: 0 8px; gap: 4px; }
+      .btn-icon { width: 36px; height: 36px; }
+    }
+
+    /* SEARCH */
+    .search-nav-btn { width: 24px; height: 24px; background: transparent; border: none; color: var(--text-dim); border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .12s, color .12s; }
+    .search-nav-btn:hover { background: var(--surface2); color: var(--text); }
+    .search-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* TTS */
+    #tts-bar { position: absolute; bottom: calc(var(--statusbar-h) + 8px); left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 24px; display: none; align-items: center; gap: 8px; padding: 8px 16px; z-index: 90; box-shadow: 0 4px 20px rgba(0,0,0,0.5); white-space: nowrap; }
+    #tts-bar.visible { display: flex; }
+    .btn-tts { width: 32px; height: 32px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+    .btn-tts:hover { background: var(--border); }
+    .btn-tts.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* SETTINGS */
+    .settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 98; }
+    .settings-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 340px; max-width: 100vw; background: var(--surface); border-left: 1px solid var(--border); z-index: 99; display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s cubic-bezier(.4,0,.2,1); box-shadow: -4px 0 24px rgba(0,0,0,0.4); }
+    .settings-panel.open { transform: translateX(0); }
+    .settings-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; font-size: 15px; font-weight: 700; color: var(--text); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .settings-body { flex: 1; overflow-y: auto; padding: 8px 0 24px; }
+    .settings-section { padding: 16px 16px 8px; border-bottom: 1px solid var(--border); }
+    .settings-section:last-child { border-bottom: none; }
+    .settings-section-title { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--text); flex: 1; }
+    .settings-hint { font-size: 11px; color: var(--text-dim); font-weight: 400; }
+    .settings-select { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 5px 8px; border-radius: var(--radius-sm); outline: none; min-width: 130px; cursor: pointer; }
+    .settings-select:focus { border-color: var(--accent); }
+    .settings-clear-btn { background: none; border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 3px 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background .12s, color .12s; }
+    .settings-clear-btn:hover { background: var(--surface2); color: var(--text); }
+    .history-list { display: flex; flex-direction: column; gap: 4px; }
+    .history-empty { font-size: 12px; color: var(--text-dim); text-align: center; padding: 12px 0; font-style: italic; }
+    .history-item { display: flex; align-items: center; gap: 8px; padding: 8px 6px; border-radius: var(--radius-sm); cursor: pointer; transition: background .12s; }
+    .history-item:hover { background: var(--surface2); }
+    .history-icon { width: 28px; height: 28px; background: var(--accent-dim); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+    .history-info { flex: 1; overflow: hidden; }
+    .history-name { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-meta { font-size: 10px; color: var(--text-dim); }
+    .suite-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .suite-app { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border-radius: var(--radius-sm); background: var(--surface2); }
+    .suite-badge { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+    .suite-name { font-size: 11px; color: var(--text); font-weight: 600; }
+    .suite-status { font-size: 10px; }
+    .suite-status.current { color: var(--accent); }
+    .suite-status.soon { color: var(--text-dim); }
+    .suite-status.idea { color: #9C27B0; }
+    .info-row { display: flex; gap: 12px; padding: 5px 0; font-size: 12px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { color: var(--text-dim); min-width: 90px; flex-shrink: 0; }
+    .info-val { color: var(--text); }
+    .btn-install-pwa { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; padding: 6px 14px; cursor: pointer; transition: opacity .15s; white-space: nowrap; }
+    .btn-install-pwa:hover { opacity: .85; }
+
+    /* LOG PANEL */
+    #log-panel { position: fixed; inset: 0; background: var(--surface); z-index: 300; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); }
+    #log-panel.open { transform: translateY(0); }
+    #log-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    #log-panel-header span { font-size: 15px; font-weight: 700; color: var(--text); }
+    #log-panel-header .header-actions { display: flex; align-items: center; gap: 4px; }
+    #log-content { flex: 1; overflow-y: auto; padding: 12px 16px; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 11px; line-height: 1.7; user-select: text; -webkit-user-select: text; background: var(--bg); }
+    #log-content:empty::before { content: 'Nessun log disponibile.'; color: var(--text-dim); font-style: italic; }
+    .log-line { display: flex; gap: 8px; padding: 1px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .log-line:last-child { border-bottom: none; }
+    .log-ts { color: var(--text-dim); flex-shrink: 0; font-size: 10px; padding-top: 1px; }
+    .log-level { font-weight: 700; font-size: 10px; flex-shrink: 0; padding-top: 1px; min-width: 40px; }
+    .log-level.error { color: var(--danger); }
+    .log-level.warn { color: var(--warning); }
+    .log-level.info { color: var(--accent); }
+    .log-level.debug { color: var(--text-dim); }
+    .log-msg { color: var(--text); flex: 1; word-break: break-all; }
+    .log-msg.error { color: #ff6b6b; }
+    .log-msg.warn { color: #ffb74d; }
+    #log-empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 40px 16px; font-style: italic; }
+
+    /* PRIVACY PANEL — fullscreen stile settings */
+    #privacy-panel { position: fixed; inset: 0; background: var(--surface); z-index: 300; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s cubic-bezier(.4,0,.2,1); }
+    #privacy-panel.open { transform: translateY(0); }
+    #privacy-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    #privacy-panel-header span { font-size: 15px; font-weight: 700; color: var(--text); }
+    #privacy-panel-header .header-actions { display: flex; align-items: center; gap: 4px; }
+    #privacy-iframe-wrap { flex: 1; overflow: hidden; position: relative; }
+    #privacy-iframe { width: 100%; height: 100%; border: none; background: #fff; }
+    #privacy-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--surface); font-size: 13px; color: var(--text-dim); gap: 10px; }
+    .btn-privacy-link { background: none; border: none; color: var(--accent); font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; text-align: left; transition: opacity .15s; }
+    .btn-privacy-link:hover { opacity: .75; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <header id="toolbar">
+    <div class="toolbar-brand">
+      <div class="brand-icon">
+        <img src="icons/mascot.png" alt="OK Suite PDF" style="width:100%;height:100%;object-fit:contain;" />
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">OK Suite</span>
+        <span class="brand-badge">PDF</span>
+      </div>
+    </div>
+    <div class="toolbar-title">
+
+      <div class="doc-subtitle" id="doc-subtitle">Apri un file PDF per iniziare</div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn-icon primary" id="btn-open" title="Apri PDF" aria-label="Apri file PDF">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      </button>
+      <div id="doc-tools" style="display:none; align-items:center; gap:2px;">
+        <div class="toolbar-sep"></div>
+        <button class="btn-icon" id="btn-print" title="Stampa" aria-label="Stampa documento">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        </button>
+        <button class="btn-icon" id="btn-share" title="Condividi" aria-label="Condividi documento">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
+        <div class="toolbar-sep"></div>
+        <button class="btn-icon" id="btn-outline" title="Sommario" aria-label="Sommario">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </button>
+        <button class="btn-icon" id="btn-search" title="Cerca nel documento" aria-label="Cerca">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <button class="btn-icon" id="btn-fit" title="Adatta larghezza" aria-label="Adatta larghezza">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
+        <button class="btn-icon" id="btn-tts" title="Leggi ad alta voce" aria-label="Leggi ad alta voce">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </button>
+        <button class="btn-icon" id="btn-overflow" title="Altro" aria-label="Altro" style="display:none">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+        </button>
+        <div class="toolbar-sep"></div>
+        <button class="btn-icon danger-icon" id="btn-close" title="Chiudi documento" aria-label="Chiudi documento">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div style="flex:1"></div>
+      <button class="btn-icon" id="btn-settings" title="Impostazioni" aria-label="Impostazioni">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- FILE TITLE BAR -->
+  <div id="file-titlebar">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--badge-pdf)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <span id="file-titlebar-name">—</span>
+  </div>
+
+  <!-- OVERFLOW MENU -->
+  <div id="overflow-menu" role="menu">
+    <button class="overflow-item" id="omenu-print"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Stampa</button>
+    <button class="overflow-item" id="omenu-share"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Condividi</button>
+    <button class="overflow-item" id="omenu-fit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>Adatta larghezza</button>
+    <button class="overflow-item" id="omenu-tts"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>Leggi ad alta voce</button>
+  </div>
+
+  <main id="viewer-area">
+    <div id="side-left-panel" class="side-panel">
+      <div class="side-tab-bar">
+        <button class="side-tab active" id="tab-outline" data-tab="outline">Sommario</button>
+        <button class="side-tab" id="tab-thumbs" data-tab="thumbs">Anteprime</button>
+        <button class="btn-icon side-panel-close-btn" id="btn-left-panel-close" aria-label="Chiudi pannello">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="tab-content-outline" class="tab-content active">
+        <ul id="outline-list" class="outline-list"></ul>
+      </div>
+      <div id="tab-content-thumbs" class="tab-content">
+        <div id="thumbs-list" class="thumbs-list"></div>
+      </div>
+    </div>
+
+    <div id="settings-overlay" class="settings-overlay" style="display:none"></div>
+
+    <div id="settings-panel" class="settings-panel">
+      <div class="settings-header">
+        <span>Impostazioni</span>
+        <button class="btn-icon" id="btn-settings-close" aria-label="Chiudi impostazioni">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-section">
+          <div class="settings-section-title">Impostazioni</div>
+          <div class="settings-row">
+            <div class="settings-label"><span>Zoom iniziale</span><span class="settings-hint">Alla apertura del documento</span></div>
+            <select id="set-zoom-default" class="settings-select">
+              <option value="auto">Automatico (adatta larghezza)</option>
+              <option value="0.5">50%</option><option value="0.75">75%</option>
+              <option value="1.0">100%</option><option value="1.25">125%</option>
+              <option value="1.5">150%</option><option value="2.0">200%</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label"><span>Mostra all'apertura del file</span><span class="settings-hint">Apre automaticamente il pannello laterale</span></div>
+            <select id="set-panel-open" class="settings-select">
+              <option value="none">Non aprire</option>
+              <option value="outline">Sommario</option>
+              <option value="thumbs">Anteprime</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label"><span>Lingua lettura voce</span><span class="settings-hint">Lingua usata per "Leggi ad alta voce"</span></div>
+            <select id="set-tts-lang" class="settings-select">
+              <option value="it-IT">Italiano</option><option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option><option value="fr-FR">Français</option>
+              <option value="de-DE">Deutsch</option><option value="es-ES">Español</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label"><span>Tema</span><span class="settings-hint">Scegli tra tema scuro e tema chiaro</span></div>
+            <select id="set-theme" class="settings-select">
+              <option value="dark">🌙 Scuro</option><option value="light">☀️ Chiaro</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label"><span>Posizione pannello</span><span class="settings-hint">Sommario e anteprime a sinistra o a destra</span></div>
+            <select id="set-panel-pos" class="settings-select">
+              <option value="left">◀ Sinistra</option><option value="right">Destra ▶</option>
+            </select>
+          </div>
+          <div class="settings-row" id="row-install-pwa" style="display:none">
+            <div class="settings-label"><span>Installa app</span><span class="settings-hint">Aggiungi OK Suite PDF alla schermata home</span></div>
+            <button class="btn-install-pwa" id="btn-pwa-install-settings">Installa</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-title"><span>Cronologia file recenti</span><button class="settings-clear-btn" id="btn-clear-history">Cancella</button></div>
+          <div id="history-list" class="history-list"><div class="history-empty">Nessun file aperto di recente</div></div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-title">Log applicazione</div>
+          <div class="settings-row">
+            <div class="settings-label"><span>Abilita log</span><span class="settings-hint">Registra operazioni ed errori</span></div>
+            <select id="set-log-enabled" class="settings-select">
+              <option value="false">No</option>
+              <option value="true">Sì</option>
+            </select>
+          </div>
+          <div class="settings-row" id="row-log-level">
+            <div class="settings-label"><span>Livello log</span><span class="settings-hint">Error: solo errori · Debug: tutto</span></div>
+            <select id="set-log-level" class="settings-select">
+              <option value="error">Error</option>
+              <option value="debug">Debug</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label"><span>Visualizza log</span><span class="settings-hint">Apri il pannello log</span></div>
+            <button class="settings-clear-btn" id="btn-open-log">Apri</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label"><span>Elimina log</span><span class="settings-hint">Cancella tutti i log salvati</span></div>
+            <button class="settings-clear-btn" id="btn-clear-log">Elimina</button>
+          </div>
+        </div>
+
+        <div class="settings-section" id="suite-section" style="display:none">
+          <div class="settings-section-title">Scopri OK Suite</div>
+          <div class="suite-grid">
+            <div class="suite-app"><div class="suite-badge" style="background:#E53935">PDF</div><span class="suite-name">OK PDF</span><span class="suite-status current">Questa app</span></div>
+            <div class="suite-app"><div class="suite-badge" style="background:#1565C0">WORD</div><span class="suite-name">OK Word</span><span class="suite-status soon">Prossimamente</span></div>
+            <div class="suite-app"><div class="suite-badge" style="background:#2E7D32">XLS</div><span class="suite-name">OK Excel</span><span class="suite-status soon">Prossimamente</span></div>
+            <div class="suite-app"><div class="suite-badge" style="background:#E65100">PPT</div><span class="suite-name">OK PPT</span><span class="suite-status soon">Prossimamente</span></div>
+            <div class="suite-app"><div class="suite-badge" style="background:#6A1B9A">2FA</div><span class="suite-name">OK 2FA</span><span class="suite-status idea">Idea futura</span></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-title">Informazioni</div>
+          <div class="info-row"><span class="info-key">App</span><span class="info-val">OK Suite — PDF</span></div>
+          <div class="info-row"><span class="info-key">Versione</span><span class="info-val" id="info-version">—</span></div>
+          <div class="info-row"><span class="info-key">Aggiornamento</span><span class="info-val" id="info-date">—</span></div>
+          <div class="info-row"><span class="info-key">Sviluppatore</span><span class="info-val">A.M. · TakeItEasy</span></div>
+          <div class="info-row"><span class="info-key">Piattaforma</span><span class="info-val">PWA · TWA · Android</span></div>
+          <div class="info-row" style="margin-top:8px"><span class="info-key">Licenza</span><span class="info-val">© 2026 A.M. · TakeItEasy. Tutti i diritti riservati.</span></div>
+          <div class="info-row"><span class="info-key">Privacy</span><span class="info-val"><button class="btn-privacy-link" id="btn-open-privacy">Informativa sulla privacy</button></span></div>
+        </div>
+        <div style="padding: 12px 16px; flex-shrink:0; border-top: 1px solid var(--border);">
+          <button id="btn-settings-close-bottom" style="width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px; cursor:pointer; transition:background .15s;">Chiudi impostazioni</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="search-panel" class="side-panel">
+      <div class="side-panel-header">
+        <span>Cerca</span>
+        <button class="btn-icon" id="btn-search-close" aria-label="Chiudi ricerca">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="search-controls">
+        <input type="search" id="search-input" placeholder="Cerca nel documento…" autocomplete="off" />
+        <div class="search-nav">
+          <span id="search-count"></span>
+          <button class="btn-nav" id="btn-search-prev" title="Risultato precedente"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <button class="btn-nav" id="btn-search-next" title="Risultato successivo"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pdf-viewer"></div>
+
+    <div id="placeholder">
+      <img src="./icons/mascot.png" alt="OK Suite PDF" class="placeholder-mascot" />
+      <h2 class="placeholder-title">Apri un documento PDF</h2>
+      <p class="placeholder-sub">Tocca il pulsante qui sotto oppure trascina un file PDF nell'area del visualizzatore</p>
+      <button class="btn-open-main" id="btn-open-main">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <span>Apri file PDF</span>
+      </button>
+      <p class="drop-hint">Oppure trascina e rilascia un file PDF qui</p>
+    </div>
+
+    <div id="loading-overlay" class="hidden">
+      <div class="spinner"></div>
+      <p class="loading-text" id="loading-text">Caricamento documento…</p>
+    </div>
+  </main>
+
+  <footer id="statusbar">
+    <button class="btn-nav" id="btn-prev" title="Pagina precedente" aria-label="Pagina precedente" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <div class="page-info">
+      <input type="number" id="page-input" value="1" min="1" aria-label="Numero pagina" disabled />
+      <span style="color:var(--text-dim)">/</span>
+      <span id="total-pages" style="color:var(--text-dim)">—</span>
+    </div>
+    <button class="btn-nav" id="btn-next" title="Pagina successiva" aria-label="Pagina successiva" disabled>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <div class="statusbar-sep"></div>
+    <button class="btn-nav" id="btn-zoom-out" title="Zoom out" aria-label="Riduci zoom" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    </button>
+    <div class="zoom-indicator" id="zoom-indicator" title="Clicca per zoom 100%" style="cursor:pointer">—%</div>
+    <button class="btn-nav" id="btn-zoom-in" title="Zoom in" aria-label="Aumenta zoom" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+    </button>
+  </footer>
+
+  <div id="admob-banner">Pubblicità</div>
+</div>
+
+<div id="pwa-banner" class="hidden" role="complementary" aria-label="Installa app">
+  <div class="pwa-banner-icon"><img src="icons/icon-192.png" alt="OK Suite PDF" /></div>
+  <div class="pwa-banner-text"><div class="pwa-banner-title">Installa OK Suite PDF</div></div>
+  <label class="pwa-banner-nodisplay"><input type="checkbox" id="pwa-no-show" /><span>Non mostrare più</span></label>
+  <div class="pwa-banner-actions">
+    <button class="btn-pwa-install" id="btn-pwa-install">Installa</button>
+    <button class="btn-pwa-dismiss" id="btn-pwa-dismiss" aria-label="Chiudi">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</div>
+
+<div id="log-panel" role="dialog" aria-modal="true" aria-label="Log applicazione">
+  <div id="log-panel-header">
+    <span>Log applicazione</span>
+    <div class="header-actions">
+      <button class="btn-icon" id="btn-log-copy" title="Copia log" aria-label="Copia log">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+      <button class="btn-icon" id="btn-log-close" aria-label="Chiudi">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="log-content"></div>
+</div>
+
+<div id="privacy-panel" role="dialog" aria-modal="true" aria-label="Informativa sulla privacy">
+  <div id="privacy-panel-header">
+    <span>Informativa sulla privacy</span>
+    <div class="header-actions">
+      <a href="https://privacy.perme.me" target="_blank" rel="noopener" class="btn-icon" title="Apri nel browser" aria-label="Apri nel browser">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+      <button class="btn-icon" id="btn-privacy-close" aria-label="Chiudi">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="privacy-iframe-wrap">
+    <div id="privacy-loading">
+      <div class="spinner"></div>
+      <span>Caricamento…</span>
+    </div>
+    <iframe id="privacy-iframe" title="Informativa sulla privacy" src="" loading="lazy"></iframe>
+  </div>
+</div>
+
+<div id="toast-container" aria-live="polite"></div>
+<input type="file" id="file-input" accept=".pdf,application/pdf" />
+<script>
+'use strict';
+
+const APP_CONFIG = { ADS_ENABLED: false, IS_PRO: false, APP_VERSION: '—', APP_NAME: 'OK Suite - PDF' };
+
+// Carica versione da version.json all'avvio
+(async function loadAppVersion() {
+  try {
+    const res = await fetch('./version.json?nocache=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.version) {
+      APP_CONFIG.APP_VERSION = data.version;
+      Logger.info(`App avviata — ${APP_CONFIG.APP_NAME} v${data.version}`);
+    }
+  } catch(e) { Logger.error(`Caricamento versione fallito: ${e.message}`); }
+})();
+
+const state = { pdfFile: null, pdfUrl: null, totalPages: 0, currentPage: 1, zoom: 1.0, zoomLocked: false, pdfDoc: null, rendering: false, fitMode: 'width' };
+
+const $ = id => document.getElementById(id);
+const dom = {
+  placeholder: $('placeholder'), loadingOverlay: $('loading-overlay'), loadingText: $('loading-text'),
+  pdfViewer: $('pdf-viewer'), fileInput: $('file-input'), btnOpen: $('btn-open'), btnOpenMain: $('btn-open-main'),
+  btnPrint: $('btn-print'), btnShare: $('btn-share'), btnClose: $('btn-close'),
+  btnPrev: $('btn-prev'), btnNext: $('btn-next'), btnZoomIn: $('btn-zoom-in'), btnZoomOut: $('btn-zoom-out'),
+  btnOutline: $('btn-outline'), btnSearch: $('btn-search'), btnFit: $('btn-fit'), btnTts: $('btn-tts'),
+  pageInput: $('page-input'), totalPages: $('total-pages'), zoomIndicator: $('zoom-indicator'),
+  docTitle: $('doc-title'), docSubtitle: $('doc-subtitle'), toastContainer: $('toast-container'),
+  viewerArea: $('viewer-area'), fileTitlebar: $('file-titlebar'), fileTitlebarName: $('file-titlebar-name'),
+};
+
+function showToast(msg, type = 'info', ms = 3000) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`; el.textContent = msg;
+  dom.toastContainer.appendChild(el);
+  setTimeout(() => el.remove(), ms + 400);
+}
+
+function showLoading(text = 'Caricamento documento…') { dom.loadingText.textContent = text; dom.loadingOverlay.classList.remove('hidden'); }
+function hideLoading() { dom.loadingOverlay.classList.add('hidden'); }
+
+function updateUI() {
+  const has = state.totalPages > 0;
+  dom.placeholder.classList.toggle('hidden', has);
+  dom.btnPrev.disabled = !has || state.currentPage <= 1;
+  dom.btnNext.disabled = !has || state.currentPage >= state.totalPages;
+  dom.btnZoomIn.disabled = !has; dom.btnZoomOut.disabled = !has; dom.pageInput.disabled = !has;
+  dom.pageInput.value = has ? state.currentPage : 1;
+  dom.totalPages.textContent = has ? state.totalPages : '—';
+  dom.zoomIndicator.textContent = has ? `${Math.round(state.zoom * 100)}%` : '—%';
+  const docTools = document.getElementById('doc-tools');
+  if (docTools) docTools.style.display = has ? 'flex' : 'none';
+  // File Title Bar
+  if (has && state.pdfFile) {
+    dom.fileTitlebarName.textContent = state.pdfFile.name;
+    dom.fileTitlebar.classList.add('visible');
+  } else {
+    dom.fileTitlebar.classList.remove('visible');
+  }
+  if (has && state.pdfFile) {
+    const sizeKB = state.pdfFile.size > 1024*1024
+      ? `${(state.pdfFile.size/1024/1024).toFixed(1)} MB`
+      : `${(state.pdfFile.size/1024).toFixed(0)} KB`;
+    dom.docSubtitle.innerHTML = `${state.totalPages} pagine<br>${sizeKB}`;
+  } else {
+    dom.docSubtitle.innerHTML = 'Apri un file PDF';
+  }
+}
+
+let pdfjsLib = null;
+async function initPdfJs() {
+  try {
+    const mod = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+    pdfjsLib = mod;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+    console.log('[OK PDF] PDF.js pronto ✓'); return true;
+  } catch(err) { console.error('[OK PDF] PDF.js init fallita:', err); return false; }
+}
+
+function buildScrollContainer() {
+  dom.pdfViewer.innerHTML = '';
+  const scroller = document.createElement('div');
+  scroller.id = 'pdf-scroller';
+  scroller.style.cssText = 'width:100%;height:100%;overflow-y:auto;overflow-x:auto;background:#525659;box-sizing:border-box;padding:16px 0;';
+  dom.pdfViewer.appendChild(scroller);
+  return scroller;
+}
+
+function calcScale(viewport) {
+  if (state.zoomLocked) return state.zoom;
+  const containerW = dom.pdfViewer.clientWidth - 32;
+  const containerH = dom.pdfViewer.clientHeight - 32;
+  if (state.fitMode === 'page') return Math.min(containerW / viewport.width, containerH / viewport.height);
+  return Math.min(containerW / viewport.width, 2.5);
+}
+
+async function renderPageIntoScroller(scroller, pageNum) {
+  const page = await state.pdfDoc.getPage(pageNum);
+  const baseVP = page.getViewport({ scale: 1.0 });
+  const scale = calcScale(baseVP);
+  const viewport = page.getViewport({ scale });
+  const W = Math.floor(viewport.width), H = Math.floor(viewport.height);
+  const wrapper = document.createElement('div');
+  wrapper.className = 'pdf-page-wrapper'; wrapper.dataset.page = pageNum; wrapper.dataset.renderScale = scale;
+  wrapper.style.cssText = `position:relative;display:block;margin:0 auto 12px;width:${W}px;height:${H}px;line-height:0;flex-shrink:0;`;
+  const canvas = document.createElement('canvas');
+  canvas.className = 'pdf-canvas'; canvas.width = W; canvas.height = H;
+  canvas.style.cssText = `display:block;width:${W}px;height:${H}px;box-shadow:0 2px 8px rgba(0,0,0,0.5);background:white;`;
+  const overlay = document.createElement('canvas');
+  overlay.className = 'pdf-overlay'; overlay.width = W; overlay.height = H;
+  overlay.style.cssText = `position:absolute;top:0;left:0;width:${W}px;height:${H}px;pointer-events:none;`;
+  wrapper.appendChild(canvas); wrapper.appendChild(overlay); scroller.appendChild(wrapper);
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  if (pageNum === 1) state.zoom = scale;
+  if (search.query && search.highlights && search.highlights[pageNum]) {
+    const aResult = search.results[search.current] || {};
+    const aIdx = aResult.page === pageNum ? aResult.rectIdx : -1;
+    drawMarkers(overlay, search.highlights[pageNum], aIdx);
+  }
+}
+
+async function renderAllPages(silent = false) {
+  const scroller = buildScrollContainer();
+  const EAGER = Math.min(3, state.totalPages);
+  for (let i = 1; i <= EAGER; i++) await renderPageIntoScroller(scroller, i);
+  hideLoading(); updateUI();
+  if (!silent) showToast('Documento caricato', 'success');
+  Logger.info(`Documento caricato: ${state.totalPages} pagine`);
+  for (let i = EAGER + 1; i <= state.totalPages; i++) await renderPageIntoScroller(scroller, i);
+  updateUI(); initScrollObserver(scroller);
+}
+
+function initScrollObserver(scroller) {
+  const observer = new IntersectionObserver(entries => {
+    let best = null, bestRatio = 0;
+    entries.forEach(e => { if (e.intersectionRatio > bestRatio) { bestRatio = e.intersectionRatio; best = e.target; } });
+    if (best) {
+      const pageNum = parseInt(best.dataset.page, 10);
+      if (pageNum !== state.currentPage) {
+        state.currentPage = pageNum; dom.pageInput.value = pageNum;
+        dom.btnPrev.disabled = pageNum <= 1; dom.btnNext.disabled = pageNum >= state.totalPages;
+        updateThumbActive(pageNum);
+      }
+    }
+  }, { root: scroller, threshold: [0.1, 0.5, 0.9] });
+  scroller.querySelectorAll('.pdf-page-wrapper').forEach(w => observer.observe(w));
+  const mutObs = new MutationObserver(mutations => {
+    mutations.forEach(m => { m.addedNodes.forEach(n => { if (n.classList?.contains('pdf-page-wrapper')) observer.observe(n); }); });
+  });
+  mutObs.observe(scroller, { childList: true });
+}
+
+async function rerenderAllPages() {
+  if (!state.pdfDoc) return;
+  showLoading('Ridisegno con nuovo zoom…');
+  await renderAllPages(true); hideLoading();
+  if (search.query) {
+    const savedQuery = search.query, savedCurrent = search.current;
+    await searchInDocument(savedQuery);
+    if (savedCurrent >= 0 && savedCurrent < search.results.length) {
+      search.current = savedCurrent;
+      document.getElementById('search-count').textContent = savedCurrent + 1 + ' / ' + search.results.length;
+      navigateToResult(savedCurrent);
+    }
+  }
+}
+
+async function openPdfFile(file) {
+  if (!file) return;
+  const ok = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  if (!ok) { showToast('Formato non supportato. Seleziona un file PDF.', 'error'); Logger.error(`Formato non supportato: ${file.type} — ${file.name}`); return; }
+  Logger.info(`Apertura file: ${file.name} (${(file.size/1024).toFixed(0)} KB)`);
+  if (!pdfjsLib) {
+    showLoading('Inizializzazione visualizzatore…');
+    const ready = await initPdfJs();
+    if (!ready) { hideLoading(); showToast('Impossibile caricare il visualizzatore PDF', 'error'); return; }
+  }
+  if (state.pdfUrl) URL.revokeObjectURL(state.pdfUrl);
+  state.pdfFile = file; state.pdfUrl = URL.createObjectURL(file);
+  state.totalPages = 0; state.currentPage = 1;
+  const _s = loadSettings();
+  if (_s.zoomDefault !== 'auto') { state.zoom = parseFloat(_s.zoomDefault); state.zoomLocked = true; }
+  else { state.zoom = 1.0; state.zoomLocked = false; }
+  state.pdfDoc = null;
+  showLoading(`Apertura: ${file.name}`);
+  dom.placeholder.classList.add('hidden');
+  addToHistory(file);
+  try {
+    state.pdfDoc = await pdfjsLib.getDocument({ url: state.pdfUrl }).promise;
+    state.totalPages = state.pdfDoc.numPages;
+    await renderAllPages();
+    const _cfg = loadSettings();
+    if (_cfg.panelOpen && _cfg.panelOpen !== 'none') {
+      const leftPanel = document.getElementById('side-left-panel');
+      if (leftPanel) { leftPanel.classList.add('open'); switchTab(_cfg.panelOpen); }
+    }
+  } catch(err) {
+    hideLoading(); console.error('[OK PDF] Errore apertura:', err);
+    showToast('Errore durante il caricamento del documento', 'error');
+    resetState(); updateUI();
+  }
+}
+
+function resetState() {
+  Logger.debug('Reset stato app');
+  if (state.pdfDoc) state.pdfDoc.destroy();
+  if (state.pdfUrl) URL.revokeObjectURL(state.pdfUrl);
+  Object.assign(state, { pdfFile: null, pdfUrl: null, totalPages: 0, currentPage: 1, zoom: 1.0, zoomLocked: false, fitMode: 'width', pdfDoc: null, rendering: false });
+  dom.pdfViewer.innerHTML = '';
+}
+
+function goToPage(page) {
+  if (!state.pdfDoc || state.totalPages === 0) return;
+  const p = Math.max(1, Math.min(page, state.totalPages));
+  Logger.debug(`Navigazione pagina: ${p}`);
+  const scroller = document.getElementById('pdf-scroller');
+  if (!scroller) return;
+  const target = scroller.querySelector(`[data-page="${p}"]`);
+  if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); state.currentPage = p; updateUI(); }
+}
+
+async function changeZoom(delta) {
+  if (!state.pdfDoc) return;
+  state.zoomLocked = true; state.zoom = Math.max(0.25, Math.min(state.zoom + delta, 4.0));
+  Logger.debug(`Zoom: ${Math.round(state.zoom * 100)}%`);
+  await rerenderAllPages();
+}
+
+async function resetZoom() {
+  if (!state.pdfDoc) return;
+  state.zoomLocked = false; state.zoom = 1.0; await rerenderAllPages();
+}
+
+async function printDocument() {
+  if (!state.pdfDoc || !state.pdfFile) { showToast('Nessun documento da stampare', 'warning'); return; }
+  Logger.info(`Stampa: ${state.pdfFile.name}`);
+
+  showToast('Preparazione stampa…', 'info', 4000);
+
+  try {
+    // Metodo 1: iframe con blob URL del PDF originale
+    // Funziona su Android, iOS, desktop — il browser usa il suo visualizzatore PDF nativo per stampare
+    const blobUrl = state.pdfUrl;
+
+    // Rimuovi iframe precedente se esiste
+    const old = document.getElementById('print-iframe');
+    if (old) old.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-iframe';
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+    iframe.src = blobUrl;
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch(e) {
+        // Fallback: window.print() non funziona su alcuni Android
+        // Apri il PDF in una nuova tab — l'utente può stampare dal browser
+        console.warn('[OK PDF] iframe.print() fallito, fallback share/download:', e);
+        printFallback();
+      }
+    };
+
+    // Timeout sicurezza: se onload non scatta entro 5s, usa fallback
+    setTimeout(() => {
+      if (document.getElementById('print-iframe')) printFallback();
+    }, 5000);
+
+  } catch(err) {
+    console.error('[OK PDF] Errore stampa:', err);
+    printFallback();
+  }
+}
+
+function printFallback() {
+  // Su Android spesso non è possibile stampare direttamente —
+  // offriamo di condividere/scaricare il PDF così l'utente lo stampa da altro app
+  const old = document.getElementById('print-iframe');
+  if (old) old.remove();
+
+  if (navigator.share && state.pdfFile) {
+    navigator.share({
+      title: state.pdfFile.name,
+      files: [state.pdfFile],
+    }).catch(() => {});
+    showToast('Condividi il PDF con la tua app di stampa', 'info', 4000);
+  } else {
+    // Download diretto
+    const a = document.createElement('a');
+    a.href = state.pdfUrl;
+    a.download = state.pdfFile?.name || 'documento.pdf';
+    a.click();
+    showToast('File scaricato — aprilo per stampare', 'info', 4000);
+  }
+}
+
+async function shareDocument() {
+  if (!state.pdfFile) { showToast('Nessun documento da condividere', 'warning'); return; }
+  Logger.info(`Condivisione: ${state.pdfFile.name}`);
+  if (navigator.share) {
+    const base = { title: state.pdfFile.name, text: state.pdfFile.name };
+    const canFiles = navigator.canShare?.({ files: [state.pdfFile] });
+    try { await navigator.share(canFiles ? { ...base, files: [state.pdfFile] } : base); return; }
+    catch(err) { if (err.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(state.pdfUrl); showToast('Link copiato negli appunti', 'success'); }
+  catch(e) { showToast('Condivisione non supportata in questo browser', 'warning'); }
+}
+
+async function initOutline() {
+  const list = document.getElementById('outline-list');
+  if (!state.pdfDoc) return;
+  const outline = await state.pdfDoc.getOutline();
+  list.innerHTML = '';
+  if (!outline || outline.length === 0) { list.innerHTML = '<li class="outline-empty">Nessun sommario disponibile</li>'; return; }
+  function buildItems(items, container, level = 0) {
+    items.forEach(item => {
+      const li = document.createElement('li'); li.className = 'outline-item'; li.style.paddingLeft = `${12 + level * 14}px`;
+      const btn = document.createElement('button'); btn.className = 'outline-btn'; btn.textContent = item.title; btn.title = item.title;
+      btn.addEventListener('click', async () => {
+        if (!item.dest) return;
+        try {
+          let dest = item.dest;
+          if (typeof dest === 'string') dest = await state.pdfDoc.getDestination(dest);
+          if (!dest || !dest.length) return;
+          const ref = dest[0];
+          let pageIdx = typeof ref === 'number' ? ref : await state.pdfDoc.getPageIndex(ref);
+          goToPage(pageIdx + 1);
+          if (window.innerWidth < 768) togglePanel('outline');
+        } catch(e) { console.warn('[Outline] nav error:', e); }
+      });
+      li.appendChild(btn);
+      if (item.items?.length) { const sub = document.createElement('ul'); sub.className = 'outline-sublist'; buildItems(item.items, sub, level + 1); li.appendChild(sub); }
+      container.appendChild(li);
+    });
+  }
+  buildItems(outline, list);
+}
+
+const search = { query: '', results: [], highlights: {}, current: -1 };
+
+function drawMarkers(overlay, rects, activeIdx = -1) {
+  const ctx = overlay.getContext('2d'); ctx.clearRect(0, 0, overlay.width, overlay.height);
+  rects.forEach((r, i) => {
+    const isActive = i === activeIdx, color = isActive ? '#FF6B00' : '#FFD600';
+    const markerH = Math.max(r.ch, 10), markerW = markerH * 0.6, y = r.cy + r.ch / 2;
+    ctx.fillStyle = color; ctx.beginPath();
+    ctx.moveTo(2, y - markerH * 0.4); ctx.lineTo(2 + markerW, y); ctx.lineTo(2, y + markerH * 0.4);
+    ctx.closePath(); ctx.fill();
+  });
+}
+
+async function searchInDocument(query) {
+  if (!state.pdfDoc || !query.trim()) { clearSearch(); return; }
+  clearHighlights();
+  search.query = query.toLowerCase(); search.results = []; search.highlights = {}; search.current = -1;
+  const resultCount = document.getElementById('search-count');
+  resultCount.textContent = 'Ricerca…';
+  for (let pageNum = 1; pageNum <= state.totalPages; pageNum++) {
+    const page = await state.pdfDoc.getPage(pageNum);
+    const baseVP = page.getViewport({ scale: 1.0 }); const scale = calcScale(baseVP);
+    const vp = page.getViewport({ scale }); const content = await page.getTextContent();
+    const charMap = [];
+    content.items.forEach(item => {
+      if (!item.str) return;
+      const [,,, fsY, xPdf, yPdf] = item.transform; const fontH = Math.abs(fsY);
+      const charW = Math.abs(item.width) / (item.str.length || 1);
+      for (let ci = 0; ci < item.str.length; ci++) charMap.push({ ch: item.str[ci], xPdf: xPdf + charW * ci, yPdf, fontH, charW });
+    });
+    const fullText = charMap.map(c => c.ch).join('').toLowerCase();
+    let pos = 0;
+    while ((pos = fullText.indexOf(search.query, pos)) !== -1) {
+      const matchChars = charMap.slice(pos, pos + search.query.length);
+      const rows = [];
+      matchChars.forEach(c => { const row = rows.find(r => Math.abs(r.y - c.yPdf) < 4); if (row) row.chars.push(c); else rows.push({ y: c.yPdf, chars: [c] }); });
+      rows.forEach(row => {
+        const xs = row.chars.map(c => c.xPdf), xMin = Math.min(...xs), xMax = Math.max(...xs) + row.chars[row.chars.length - 1].charW;
+        const fH = row.chars[0].fontH, cx = xMin * scale, cy = vp.height - (row.y + fH) * scale, cw = (xMax - xMin) * scale, ch = fH * scale * 1.15;
+        if (!search.highlights[pageNum]) search.highlights[pageNum] = [];
+        const rectIdx = search.highlights[pageNum].length;
+        search.highlights[pageNum].push({ cx, cy, cw, ch }); search.results.push({ page: pageNum, rectIdx });
+      });
+      pos++;
+    }
+  }
+  if (!search.results.length) { resultCount.textContent = 'Nessun risultato'; return; }
+  search.current = 0; resultCount.textContent = `1 / ${search.results.length}`;
+  applyAllHighlights(); navigateToResult(0);
+}
+
+function applyAllHighlights(activePage = -1, activeRectIdx = -1) {
+  const scroller = document.getElementById('pdf-scroller'); if (!scroller) return;
+  scroller.querySelectorAll('.pdf-page-wrapper').forEach(wrapper => {
+    const pageNum = parseInt(wrapper.dataset.page, 10);
+    if (!search.highlights[pageNum]) return;
+    const overlay = wrapper.querySelector('.pdf-overlay'); if (!overlay) return;
+    drawMarkers(overlay, search.highlights[pageNum], pageNum === activePage ? activeRectIdx : -1);
+  });
+}
+
+function navigateToResult(idx) {
+  if (!search.results.length) return;
+  const { page: pageNum, rectIdx } = search.results[idx];
+  applyAllHighlights(pageNum, rectIdx); goToPage(pageNum);
+}
+
+function clearHighlights() {
+  const scroller = document.getElementById('pdf-scroller'); if (!scroller) return;
+  scroller.querySelectorAll('.pdf-overlay').forEach(ov => ov.getContext('2d').clearRect(0, 0, ov.width, ov.height));
+  if (search) { search.highlights = {}; search.results = []; search.current = -1; }
+}
+
+function searchNext() {
+  if (!search.results.length) return;
+  search.current = (search.current + 1) % search.results.length;
+  document.getElementById('search-count').textContent = `${search.current + 1} / ${search.results.length}`;
+  navigateToResult(search.current);
+}
+
+function searchPrev() {
+  if (!search.results.length) return;
+  search.current = (search.current - 1 + search.results.length) % search.results.length;
+  document.getElementById('search-count').textContent = `${search.current + 1} / ${search.results.length}`;
+  navigateToResult(search.current);
+}
+
+function clearSearch() {
+  search.query = ''; search.results = []; search.highlights = {}; search.current = -1; clearHighlights();
+  const input = document.getElementById('search-input'), count = document.getElementById('search-count');
+  if (input) input.value = ''; if (count) count.textContent = '';
+}
+
+const tts = { active: false, utterance: null };
+
+async function startReading() {
+  if (!state.pdfDoc) return;
+  if (!('speechSynthesis' in window)) { showToast('Lettura ad alta voce non supportata in questo browser', 'warning'); return; }
+  stopReading(); tts.active = true; updateTtsButton(true);
+  for (let i = state.currentPage; i <= state.totalPages; i++) {
+    if (!tts.active) break;
+    const page = await state.pdfDoc.getPage(i);
+    const content = await page.getTextContent();
+    const text = content.items.map(it => it.str).join(' ').trim();
+    if (!text) continue;
+    goToPage(i);
+    await new Promise(resolve => {
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = loadSettings().ttsLang || 'it-IT'; utt.rate = 1.0;
+      utt.onend = resolve; utt.onerror = resolve; tts.utterance = utt;
+      window.speechSynthesis.speak(utt);
+    });
+  }
+  tts.active = false; updateTtsButton(false);
+}
+
+function stopReading() { tts.active = false; window.speechSynthesis?.cancel(); tts.utterance = null; updateTtsButton(false); }
+function toggleReading() { 
+  if (tts.active) { Logger.debug('TTS: stop'); stopReading(); } 
+  else { Logger.debug('TTS: avvio'); startReading(); } 
+}
+function updateTtsButton(active) {
+  const btn = document.getElementById('btn-tts'); if (!btn) return;
+  btn.classList.toggle('tts-active', active); btn.title = active ? 'Interrompi lettura' : 'Leggi ad alta voce';
+}
+
+const thumbs = { rendered: new Set(), observer: null };
+
+async function buildThumbs() {
+  const list = document.getElementById('thumbs-list');
+  if (!list || !state.pdfDoc) return;
+  list.innerHTML = ''; thumbs.rendered.clear();
+  for (let i = 1; i <= state.totalPages; i++) {
+    const item = document.createElement('div');
+    item.className = 'thumb-item'; item.dataset.page = i;
+    if (i === state.currentPage) item.classList.add('active');
+    const ph = document.createElement('div'); ph.className = 'thumb-loading'; ph.textContent = '…';
+    const num = document.createElement('span'); num.className = 'thumb-num'; num.textContent = i;
+    item.appendChild(ph); item.appendChild(num);
+    item.addEventListener('click', () => { goToPage(i); if (window.innerWidth < 768) togglePanel('thumbs'); });
+    list.appendChild(item);
+  }
+  if (thumbs.observer) thumbs.observer.disconnect();
+  thumbs.observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const page = parseInt(entry.target.dataset.page, 10);
+      if (!thumbs.rendered.has(page)) { thumbs.rendered.add(page); renderThumb(entry.target, page); }
+    });
+  }, { root: list, rootMargin: '200px', threshold: 0 });
+  list.querySelectorAll('.thumb-item').forEach(el => thumbs.observer.observe(el));
+}
+
+async function renderThumb(item, pageNum) {
+  try {
+    const page = await state.pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 0.25 });
+    const canvas = document.createElement('canvas');
+    canvas.className = 'thumb-canvas'; canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    const placeholder = item.querySelector('.thumb-loading');
+    if (placeholder) item.replaceChild(canvas, placeholder);
+  } catch(e) { console.warn('[Thumbs] render error page', pageNum, e); }
+}
+
+function updateThumbActive(pageNum) {
+  const list = document.getElementById('thumbs-list'); if (!list) return;
+  list.querySelectorAll('.thumb-item').forEach(el => el.classList.toggle('active', parseInt(el.dataset.page) === pageNum));
+  const active = list.querySelector('.thumb-item.active');
+  if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+function switchTab(tabName) {
+  ['outline', 'thumbs'].forEach(t => {
+    document.getElementById('tab-' + t)?.classList.toggle('active', t === tabName);
+    document.getElementById('tab-content-' + t)?.classList.toggle('active', t === tabName);
+  });
+  if (tabName === 'outline') initOutline();
+  if (tabName === 'thumbs') buildThumbs();
+}
+
+function togglePanel(name) {
+  if (name === 'search') {
+    const sp = document.getElementById('search-panel'); if (!sp) return;
+    if (sp.classList.contains('open')) { clearHighlights(); sp.classList.remove('open'); }
+    else { sp.classList.add('open'); setTimeout(() => document.getElementById('search-input')?.focus(), 100); }
+    return;
+  }
+  const lp = document.getElementById('side-left-panel'); if (!lp) return;
+  const isOpen = lp.classList.contains('open');
+  const activeTab = document.querySelector('.side-tab.active')?.dataset.tab;
+  if (!isOpen) { lp.classList.add('open'); switchTab(name); }
+  else if (activeTab === name) { lp.classList.remove('open'); }
+  else { switchTab(name); }
+}
+
+const SETTINGS_KEY = 'oksuite_pdf_settings', HISTORY_KEY = 'oksuite_pdf_history', MAX_HISTORY = 10;
+const defaultSettings = { zoomDefault: 'auto', panelOpen: 'none', ttsLang: 'it-IT', theme: 'dark', panelPos: 'left' };
+
+function loadSettings() { try { return { ...defaultSettings, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch(e) { return { ...defaultSettings }; } }
+function saveSettings(s) { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch(e) {} }
+
+function applySettingsToUI(s) {
+  const zoomSel = document.getElementById('set-zoom-default'), panelSel = document.getElementById('set-panel-open');
+  const ttsSel = document.getElementById('set-tts-lang'), themeSel = document.getElementById('set-theme');
+  const panelPosSel = document.getElementById('set-panel-pos');
+  if (zoomSel) zoomSel.value = s.zoomDefault; if (panelSel) panelSel.value = s.panelOpen || 'none';
+  if (ttsSel) ttsSel.value = s.ttsLang; if (themeSel) themeSel.value = s.theme || 'dark';
+  if (panelPosSel) panelPosSel.value = s.panelPos || 'left';
+}
+
+function openSettings() {
+  const panel = document.getElementById('settings-panel'), overlay = document.getElementById('settings-overlay');
+  applySettingsToUI(loadSettings()); renderHistory();
+  loadVersionInfo();   // aggiorna versione/data da version.json ad ogni apertura
+  panel.classList.add('open'); overlay.style.display = 'block';
+}
+
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('settings-overlay').style.display = 'none';
+}
+
+function applyPanelPos(pos) { const va = document.getElementById('viewer-area'); if (va) va.setAttribute('data-panel-pos', pos === 'right' ? 'right' : 'left'); }
+function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : ''); }
+
+function initSettingsEvents() {
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    const panel = document.getElementById('settings-panel');
+    if (panel.classList.contains('open')) closeSettings(); else openSettings();
+  });
+  document.getElementById('btn-settings-close').addEventListener('click', closeSettings);
+  document.getElementById('settings-overlay').addEventListener('click', closeSettings);
+  document.getElementById('btn-settings-close-bottom')?.addEventListener('click', closeSettings);
+  ['set-zoom-default', 'set-tts-lang', 'set-panel-open', 'set-theme', 'set-panel-pos'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', saveAllSettings);
+  });
+  document.getElementById('btn-clear-history')?.addEventListener('click', () => {
+    try { localStorage.removeItem(HISTORY_KEY); } catch(e) {}
+    renderHistory(); showToast('Cronologia cancellata', 'info', 2000);
+  });
+}
+
+function saveAllSettings() {
+  const theme = document.getElementById('set-theme')?.value || 'dark';
+  const s = {
+    zoomDefault: document.getElementById('set-zoom-default')?.value || 'auto',
+    panelOpen: document.getElementById('set-panel-open')?.value || 'none',
+    ttsLang: document.getElementById('set-tts-lang')?.value || 'it-IT',
+    theme, panelPos: document.getElementById('set-panel-pos')?.value || 'left',
+  };
+  saveSettings(s); applyTheme(theme); applyPanelPos(s.panelPos);
+}
+
+function addToHistory(file) {
+  try {
+    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const filtered = history.filter(h => h.name !== file.name);
+    filtered.unshift({ name: file.name, size: file.size, date: new Date().toISOString() });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered.slice(0, MAX_HISTORY)));
+  } catch(e) {}
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list'); if (!list) return;
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(e) {}
+  if (!history.length) { list.innerHTML = '<div class="history-empty">Nessun file aperto di recente</div>'; return; }
+  list.innerHTML = '';
+  history.forEach(entry => {
+    const item = document.createElement('div'); item.className = 'history-item';
+    const date = new Date(entry.date);
+    const dateStr = date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    const sizeStr = entry.size > 1024*1024 ? `${(entry.size/1024/1024).toFixed(1)} MB` : `${(entry.size/1024).toFixed(0)} KB`;
+    item.innerHTML = `<div class="history-icon">PDF</div><div class="history-info"><div class="history-name" title="${entry.name}">${entry.name}</div><div class="history-meta">${dateStr} · ${sizeStr}</div></div>`;
+    list.appendChild(item);
+  });
+}
+
+function initOverflowMenu() {
+  const btnOverflow = document.getElementById('btn-overflow'), menu = document.getElementById('overflow-menu');
+  if (!btnOverflow || !menu) return;
+  btnOverflow.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('open'); });
+  document.addEventListener('click', () => menu.classList.remove('open'));
+  document.getElementById('omenu-print')?.addEventListener('click', () => { menu.classList.remove('open'); document.getElementById('btn-print')?.click(); });
+  document.getElementById('omenu-share')?.addEventListener('click', () => { menu.classList.remove('open'); document.getElementById('btn-share')?.click(); });
+  document.getElementById('omenu-fit')?.addEventListener('click', () => { menu.classList.remove('open'); document.getElementById('btn-fit')?.click(); });
+  document.getElementById('omenu-tts')?.addEventListener('click', () => { menu.classList.remove('open'); document.getElementById('btn-tts')?.click(); });
+}
+
+function initPinchZoom() {
+  const area = dom.viewerArea;
+  let startDist = 0, startZoom = 1;
+
+  area.addEventListener('touchstart', e => {
+    if (e.touches.length !== 2) return;
+    startDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    startZoom = state.zoom;
+  }, { passive: true });
+
+  area.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !state.pdfDoc) return;
+    e.preventDefault();
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const scale = dist / startDist;
+    const newZoom = Math.max(0.25, Math.min(startZoom * scale, 4.0));
+    // Aggiorna solo l'indicatore durante il gesto, senza rerenderizzare ad ogni frame
+    state.zoom = newZoom;
+    dom.zoomIndicator.textContent = `${Math.round(newZoom * 100)}%`;
+  }, { passive: false });
+
+  area.addEventListener('touchend', e => {
+    if (e.touches.length !== 0 || !state.pdfDoc) return;
+    if (state.zoom !== startZoom) {
+      // Rerenderizza solo al termine del gesto
+      state.zoomLocked = true;
+      rerenderAllPages();
+    }
+  }, { passive: true });
+}
+
+function initDragDrop() {
+  const area = dom.viewerArea;
+  area.addEventListener('dragenter', e => { e.preventDefault(); area.classList.add('drag-over'); });
+  area.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  area.addEventListener('dragleave', e => { if (!area.contains(e.relatedTarget)) area.classList.remove('drag-over'); });
+  area.addEventListener('drop', e => { e.preventDefault(); area.classList.remove('drag-over'); const f = e.dataTransfer.files?.[0]; if (f) { Logger.info(`Drag&drop: ${f.name}`); openPdfFile(f); } });
+}
+
+function initEvents() {
+  [dom.btnOpen, dom.btnOpenMain].forEach(b => b.addEventListener('click', () => dom.fileInput.click()));
+  dom.fileInput.addEventListener('change', e => { const f = e.target.files[0]; if (f) { Logger.info(`Apertura da file picker: ${f.name}`); openPdfFile(f); dom.fileInput.value = ''; } });
+  dom.btnPrint.addEventListener('click', printDocument);
+  dom.btnShare.addEventListener('click', shareDocument);
+  dom.btnClose.addEventListener('click', () => { stopReading(); clearSearch(); clearHighlights(); resetState(); updateUI(); showToast('Documento chiuso', 'info'); });
+  dom.btnPrev.addEventListener('click', () => goToPage(state.currentPage - 1));
+  dom.btnNext.addEventListener('click', () => goToPage(state.currentPage + 1));
+  dom.pageInput.addEventListener('keydown', e => { if (e.key === 'Enter') { goToPage(+dom.pageInput.value || state.currentPage); dom.pageInput.blur(); } });
+  dom.pageInput.addEventListener('blur', () => { const v = parseInt(dom.pageInput.value, 10); if (!isNaN(v)) goToPage(v); });
+  document.addEventListener('keydown', e => {
+    if (!state.pdfDoc || document.activeElement === dom.pageInput) return;
+    const k = e.key;
+    if (k === 'ArrowLeft' || k === 'ArrowUp') goToPage(state.currentPage - 1);
+    if (k === 'ArrowRight' || k === 'ArrowDown') goToPage(state.currentPage + 1);
+    if (k === 'Home') goToPage(1); if (k === 'End') goToPage(state.totalPages);
+  });
+  dom.btnOutline.addEventListener('click', () => togglePanel('outline'));
+  dom.btnSearch.addEventListener('click', () => togglePanel('search'));
+  document.getElementById('btn-search-close').addEventListener('click', () => togglePanel('search'));
+  document.getElementById('btn-left-panel-close')?.addEventListener('click', () => document.getElementById('side-left-panel')?.classList.remove('open'));
+  document.querySelectorAll('.side-tab').forEach(btn => btn.addEventListener('click', () => togglePanel(btn.dataset.tab)));
+  let fitToggle = 'width';
+  dom.btnFit.addEventListener('click', () => {
+    fitToggle = fitToggle === 'width' ? 'page' : 'width';
+    dom.btnFit.classList.toggle('fit-active', fitToggle === 'page');
+    dom.btnFit.title = fitToggle === 'page' ? 'Adatta pagina (attivo)' : 'Adatta larghezza';
+    state.fitMode = fitToggle; state.zoomLocked = false; rerenderAllPages();
+  });
+  dom.btnTts.addEventListener('click', toggleReading);
+  const searchInput = document.getElementById('search-input');
+  let searchTimer;
+  searchInput.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => searchInDocument(searchInput.value), 600); });
+  searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchNext(); if (e.key === 'Escape') togglePanel('search'); });
+  document.getElementById('btn-search-next').addEventListener('click', searchNext);
+  document.getElementById('btn-search-prev').addEventListener('click', searchPrev);
+  dom.btnZoomIn.addEventListener('click', () => changeZoom(+0.25));
+  dom.btnZoomOut.addEventListener('click', () => changeZoom(-0.25));
+  dom.zoomIndicator.addEventListener('click', resetZoom);
+  dom.viewerArea.addEventListener('wheel', e => { if (!e.ctrlKey || !state.pdfDoc) return; e.preventDefault(); changeZoom(e.deltaY > 0 ? -0.1 : +0.1); }, { passive: false });
+}
+
+/* =====================================================
+   VERSION INFO — legge version.json e aggiorna Informazioni
+===================================================== */
+async function loadVersionInfo() {
+  try {
+    const url = './version.json?nocache=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache, no-store' } });
+    console.log('[version] fetch status:', res.status, '| from SW cache?', res.headers.get('x-sw-cache') || 'unknown');
+    if (!res.ok) { console.warn('[version] fetch NOK:', res.status); return; }
+    const data = await res.json();
+    console.log('[version] letto:', data);
+    const elVer  = document.getElementById('info-version');
+    const elDate = document.getElementById('info-date');
+    if (elVer  && data.version) elVer.textContent = data.version;
+    if (elDate && data.date)    elDate.textContent = new Date(data.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
+  } catch(e) { console.warn('[version] Errore fetch version.json:', e); }
+}
+
+/* =====================================================
+   LOGGER — sistema di log in-app
+===================================================== */
+const Logger = (function() {
+  const LOG_KEY = 'oksuite_pdf_log';
+  const MAX_ENTRIES = 500;
+  const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
+
+  function isEnabled() {
+    try { return localStorage.getItem('oksuite_pdf_log_enabled') === 'true'; } catch(e) { return false; }
+  }
+
+  function getLevel() {
+    try { return localStorage.getItem('oksuite_pdf_log_level') || 'error'; } catch(e) { return 'error'; }
+  }
+
+  function shouldLog(level) {
+    if (!isEnabled()) return false;
+    return LEVELS[level] <= LEVELS[getLevel()];
+  }
+
+  function ts() {
+    const d = new Date();
+    return d.toLocaleTimeString('it-IT', { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+  }
+
+  function write(level, msg) {
+    if (!shouldLog(level)) return;
+    try {
+      const entries = getLogs();
+      entries.push({ ts: ts(), level, msg: String(msg) });
+      if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES);
+      localStorage.setItem(LOG_KEY, JSON.stringify(entries));
+    } catch(e) {}
+  }
+
+  function getLogs() {
+    try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch(e) { return []; }
+  }
+
+  function clear() {
+    try { localStorage.removeItem(LOG_KEY); } catch(e) {}
+  }
+
+  function getAsText() {
+    return getLogs().map(e => `[${e.ts}] [${e.level.toUpperCase()}] ${e.msg}`).join('\n');
+  }
+
+  return {
+    error: (msg) => { console.error('[LOG]', msg); write('error', msg); },
+    warn:  (msg) => { console.warn('[LOG]', msg);  write('warn',  msg); },
+    info:  (msg) => { console.info('[LOG]', msg);  write('info',  msg); },
+    debug: (msg) => { console.log('[LOG]', msg);   write('debug', msg); },
+    getLogs, clear, getAsText, isEnabled, getLevel,
+  };
+})();
+
+/* =====================================================
+   LOG PANEL
+===================================================== */
+(function initLogPanel() {
+  const panel = document.getElementById('log-panel');
+  const content = document.getElementById('log-content');
+  const btnClose = document.getElementById('btn-log-close');
+  const btnCopy = document.getElementById('btn-log-copy');
+  const btnOpen = document.getElementById('btn-open-log');
+  const btnClear = document.getElementById('btn-clear-log');
+  const setEnabled = document.getElementById('set-log-enabled');
+  const setLevel = document.getElementById('set-log-level');
+  const rowLevel = document.getElementById('row-log-level');
+
+  function renderLog() {
+    const entries = Logger.getLogs();
+    if (!entries.length) {
+      content.innerHTML = '<div id="log-empty">Nessun log disponibile.</div>';
+      return;
+    }
+    content.innerHTML = entries.map(e => {
+      const msgClass = e.level === 'error' ? 'error' : e.level === 'warn' ? 'warn' : '';
+      return `<div class="log-line">
+        <span class="log-ts">${e.ts}</span>
+        <span class="log-level ${e.level}">${e.level.toUpperCase()}</span>
+        <span class="log-msg ${msgClass}">${e.msg.replace(/</g,'&lt;')}</span>
+      </div>`;
+    }).join('');
+    // Scroll in fondo
+    content.scrollTop = content.scrollHeight;
+  }
+
+  function openLog() {
+    renderLog();
+    panel.classList.add('open');
+  }
+
+  function closeLog() {
+    panel.classList.remove('open');
+  }
+
+  function updateLogUI() {
+    const enabled = setEnabled?.value === 'true';
+    if (rowLevel) rowLevel.style.display = enabled ? 'flex' : 'none';
+  }
+
+  btnOpen?.addEventListener('click', openLog);
+  btnClose?.addEventListener('click', closeLog);
+  btnCopy?.addEventListener('click', async () => {
+    const text = Logger.getAsText();
+    if (!text) { showToast('Log vuoto', 'warning'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('Log copiato negli appunti', 'success');
+    } catch(e) {
+      showToast('Copia non supportata', 'error');
+    }
+  });
+  btnClear?.addEventListener('click', () => {
+    Logger.clear();
+    renderLog();
+    showToast('Log eliminato', 'info', 2000);
+  });
+  setEnabled?.addEventListener('change', () => {
+    localStorage.setItem('oksuite_pdf_log_enabled', setEnabled.value);
+    updateLogUI();
+  });
+  setLevel?.addEventListener('change', () => {
+    localStorage.setItem('oksuite_pdf_log_level', setLevel.value);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && panel.classList.contains('open')) closeLog();
+  });
+
+  // Inizializza UI con valori salvati
+  if (setEnabled) setEnabled.value = Logger.isEnabled() ? 'true' : 'false';
+  if (setLevel) setLevel.value = Logger.getLevel();
+  updateLogUI();
+})();
+
+function initApp() {
+  console.log(`[OK PDF] ${APP_CONFIG.APP_NAME} avvio...`);
+  Logger.debug(`URL: ${window.location.href}`);
+  initDragDrop(); initPinchZoom(); initEvents(); initSettingsEvents(); initOverflowMenu();
+  const _initS = loadSettings();
+  applyTheme(_initS.theme || 'dark'); applyPanelPos(_initS.panelPos || 'left');
+  updateUI();
+  console.log('[OK PDF] Pronto ✓');
+}
+
+document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', initApp) : initApp();
+
+/* =====================================================
+   PRIVACY PANEL
+===================================================== */
+(function initPrivacyPanel() {
+  const panel = document.getElementById('privacy-panel');
+  const iframe = document.getElementById('privacy-iframe');
+  const loading = document.getElementById('privacy-loading');
+  const btnOpen = document.getElementById('btn-open-privacy');
+  const btnClose = document.getElementById('btn-privacy-close');
+  let loaded = false;
+
+  function openPrivacy() {
+    panel.classList.add('open');
+    if (!loaded) {
+      loaded = true;
+      loading.style.display = 'flex';
+      iframe.src = 'https://privacy.perme.me';
+      iframe.onload = () => { loading.style.display = 'none'; };
+    }
+  }
+
+  function closePrivacy() {
+    panel.classList.remove('open');
+  }
+
+  btnOpen?.addEventListener('click', openPrivacy);
+  btnClose?.addEventListener('click', closePrivacy);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('open')) closePrivacy(); });
+})();
+
+/* =====================================================
+   SHARE TARGET HANDLER — riceve file via ?share= parameter
+===================================================== */
+(async function handleSharedFile() {
+  try {
+    const fullUrl = window.location.href;
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    const shareKey = params.get('share');
+
+    // Log sempre — anche quando non c'è share
+    Logger.debug(`ShareHandler: URL=${fullUrl.substring(0, 80)}`);
+    Logger.debug(`ShareHandler: search=${search || 'vuoto'}`);
+    Logger.debug(`ShareHandler: shareKey=${shareKey || 'nessuno'}`);
+    Logger.debug(`ShareHandler: SW controller=${navigator.serviceWorker?.controller ? 'presente' : 'assente'}`);
+
+    if (!shareKey) {
+      Logger.debug('ShareHandler: nessun parametro share, uscita');
+      return;
+    }
+
+    Logger.info('Share target: recupero file dal SW...');
+
+    const sw = navigator.serviceWorker?.controller
+      || (await navigator.serviceWorker.ready).active;
+    if (!sw) { Logger.error('Share target: SW non disponibile'); return; }
+    Logger.debug(`ShareHandler: SW fonte=${navigator.serviceWorker.controller ? 'controller' : 'ready.active'}`);
+
+    const channel = new MessageChannel();
+    channel.port1.onmessage = async (event) => {
+      Logger.debug(`ShareHandler: risposta SW = ${event.data?.type}`);
+      if (event.data?.type === 'SHARED_FILE') {
+        const { name, type, buffer } = event.data;
+        Logger.info(`Share target: file ricevuto — ${name} (${buffer?.byteLength || 0} bytes)`);
+        const file = new File([buffer], name, { type: type || 'application/pdf' });
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => openPdfFile(file));
+        } else {
+          await openPdfFile(file);
+        }
+        window.history.replaceState({}, '', '/index.html');
+      } else if (event.data?.type === 'SHARED_FILE_NOT_FOUND') {
+        Logger.error(`Share target: file non trovato nel SW per key=${shareKey}`);
+      }
+    };
+    sw.postMessage({ type: 'GET_SHARED_FILE', key: shareKey }, [channel.port2]);
+  } catch(e) {
+    Logger.error(`ShareHandler errore: ${e.message}`);
+    console.error('[ShareHandler] Errore:', e);
+  }
+})();
+
+/* =====================================================
+   INTENT HANDLER — apre PDF passato via Android intent
+===================================================== */
+(async function handleAndroidIntent() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fileUri = params.get('file') || params.get('uri');
+    if (!fileUri) return;
+    console.log('[IntentHandler] URI ricevuto:', fileUri);
+    Logger.info(`IntentHandler URI: ${fileUri}`);
+    const response = await fetch(fileUri);
+    if (!response.ok) throw new Error('Fetch fallita: ' + response.status);
+    const blob = await response.blob();
+    const fileName = decodeURIComponent(fileUri.split('/').pop() || 'documento.pdf');
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+    console.log('[IntentHandler] File pronto:', file.name);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => openPdfFile(file));
+    } else {
+      await openPdfFile(file);
+    }
+  } catch(e) {
+    console.error('[IntentHandler] Errore:', e);
+    Logger.error(`IntentHandler errore: ${e.message}`);
+  }
+})();
+
+/* =====================================================
+   FILE HANDLER — apre PDF passato via launchQueue
+   (Step 4: PWA file_handlers nel manifest)
+===================================================== */
+if ('launchQueue' in window) {
+  window.launchQueue.setConsumer(async launchParams => {
+    console.log('[launchQueue] params ricevuti:', launchParams);
+    Logger.info(`launchQueue: files ricevuti = ${launchParams.files?.length || 0}`);
+    if (!launchParams.files || launchParams.files.length === 0) return;
+    try {
+      const fileHandle = launchParams.files[0];
+      const file = await fileHandle.getFile();
+      console.log('[FileHandler] Apertura file da launchQueue:', file.name);
+      Logger.info(`launchQueue: apertura — ${file.name}`);
+      await openPdfFile(file);
+    } catch(e) {
+      console.error('[FileHandler] Errore apertura file:', e);
+      Logger.error(`launchQueue errore: ${e.message}`);
+      showToast('Errore apertura file PDF', 'error');
+    }
+  });
+  console.log('[FileHandler] launchQueue attivo ✓');
+}
+
+/* SERVICE WORKER */
+(function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+
+  // Ascolta il messaggio SW_UPDATED dal service worker
+  // Viene inviato da activate() quando una nuova versione è entrata in funzione
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data?.type === 'SW_UPDATED') {
+      const ver = event.data.version ? ` v${event.data.version}` : '';
+      console.log('[PWA] App aggiornata alla nuova versione', event.data.version);
+      Logger.info(`SW aggiornato${ver}`);
+      showToast(`✓ Applicazione aggiornata${ver}`, 'success', 4000);
+      setTimeout(() => window.location.reload(), 2000);
+    }
+  });
+
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('./service-worker.js', { scope: './' });
+      console.log('[PWA] Service Worker registrato, scope:', reg.scope);
+      // Controlla aggiornamenti ogni volta che l'app torna in foreground
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+    } catch(err) { console.error('[PWA] Registrazione Service Worker fallita:', err); }
+  });
+})();
+
+/* PWA INSTALL BANNER */
+(function initPwaBanner() {
+  let deferredPrompt = null;
+  const banner = document.getElementById('pwa-banner');
+  const btnInstall = document.getElementById('btn-pwa-install');
+  const btnDismiss = document.getElementById('btn-pwa-dismiss');
+  const DISMISSED_KEY = 'oksuite-pdf-pwa-dismissed';
+  if (localStorage.getItem(DISMISSED_KEY)) return;
+  window.addEventListener('beforeinstallprompt', e => {
+    const row = document.getElementById('row-install-pwa'); if (row) row.style.display = 'flex';
+    e.preventDefault(); deferredPrompt = e; banner.classList.remove('hidden');
+    console.log('[PWA] Install prompt disponibile');
+  });
+  btnInstall?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    banner.classList.add('hidden'); deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if (outcome === 'accepted') showToast('App installata con successo!', 'success');
+  });
+  btnDismiss?.addEventListener('click', () => {
+    banner.classList.add('hidden');
+    const noShow = document.getElementById('pwa-no-show');
+    if (noShow?.checked) localStorage.setItem(DISMISSED_KEY, '1');
+  });
+  if (window.matchMedia('(display-mode: standalone)').matches) { banner.classList.add('hidden'); }
+  window.addEventListener('appinstalled', () => {
+    banner.classList.add('hidden'); deferredPrompt = null;
+    showToast('OK Suite PDF installata!', 'success');
+  });
+})();
+</script>
+</body>
+</html>
