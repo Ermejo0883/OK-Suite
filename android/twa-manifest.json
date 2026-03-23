@@ -16,8 +16,8 @@
   "iconUrl": "https://pdf.perme.me/icons/icon-512.png",
   "maskableIconUrl": "https://pdf.perme.me/icons/icon-512.png",
   "monochromeIconUrl": null,
-  "appVersion": "1.1.28",
-  "appVersionCode": 18,
+  "appVersion": "1.1.29",
+  "appVersionCode": 20,
   "signingKey": {
     "path": "./android.keystore",
     "alias": "oksuite-pdf"
@@ -27,7 +27,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://pdf.perme.me/",
-  "minSdkVersion": 21,
+  "minSdkVersion": 23,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://pdf.perme.me/manifest.json",
