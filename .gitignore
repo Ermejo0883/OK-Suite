@@ -8,3 +8,13 @@ desktop.ini
 
 # Log
 *.log
+
+# Android build artifacts
+android-project/.gradle/
+android-project/build/
+android-project/app/build/
+android-project/app-release-signed.apk
+android-project/app-release-signed.apk.idsig
+
+# Keystore (gestito via GitHub Secrets)
+android-project/signingKey.keystore

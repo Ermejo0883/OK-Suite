@@ -17,117 +17,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       # ── Keystore ──────────────────────────────────────────────
       - name: Decode keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android.keystore
-          chmod 600 android.keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android-project/signingKey.keystore
+          chmod 600 android-project/signingKey.keystore
 
-      # ── Genera progetto Android con @bubblewrap/core ──────────
-      - name: Install Bubblewrap core
-        run: npm install @bubblewrap/core
-
-      - name: Generate Android project
-        run: |
-          node << 'EOF'
-          const { TwaGenerator, TwaManifest } = require('@bubblewrap/core');
-          const path = require('path');
-          const fs   = require('fs');
-
-          async function main() {
-            const manifestPath = path.resolve('./android/twa-manifest.json');
-            const outputDir   = path.resolve('./android-project');
-
-            console.log('Caricamento twa-manifest.json da:', manifestPath);
-            const json = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-
-            if (!json.features) json.features = {};
-            if (!json.features.locationDelegation) json.features.locationDelegation = { enabled: false };
-            if (!json.features.playBilling)        json.features.playBilling        = { enabled: false };
-
-            // fromFile è il metodo corretto in @bubblewrap/core 1.24.x
-            fs.writeFileSync('/tmp/twa-manifest.json', JSON.stringify(json));
-            const manifest = await TwaManifest.fromFile('/tmp/twa-manifest.json');
-
-            console.log('Manifest creato, tipo:', typeof manifest);
-            console.log('Generazione progetto Android in:', outputDir);
-            const generator = new TwaGenerator();
-            await generator.createTwaProject(outputDir, manifest);
-            console.log('Progetto Android generato correttamente.');
-          }
-
-          main().catch(err => { console.error(err); process.exit(1); });
-          EOF
-
-      # ── Patch AndroidManifest.xml — intent-filter per PDF ─────
-      # TEMPORANEAMENTE DISABILITATO per test installazione
-      - name: Patch AndroidManifest.xml per "Apri con" PDF
-        if: false
-        run: |
-          python3 << 'PYEOF'
-          import sys
-
-          MANIFEST = "android-project/app/src/main/AndroidManifest.xml"
-
-          with open(MANIFEST, "r", encoding="utf-8") as f:
-              content = f.read()
-
-          # Salta solo se il filtro VIEW+PDF esiste già (non il SEND dello share target)
-          if 'android.intent.action.VIEW' in content and 'scheme="content"' in content:
-              print("intent-filter VIEW PDF già presente, nessuna modifica.")
-              sys.exit(0)
-
-          # Assicura android:exported="true" sull'activity principale (richiesto da Android 12+)
-          # Bubblewrap potrebbe non impostarlo correttamente
-          if 'android:exported="true"' not in content:
-              content = content.replace(
-                  '<activity android:name=',
-                  '<activity android:exported="true" android:name=',
-                  1
-              )
-              print("Aggiunto android:exported=true all'activity principale.")
-
-          NEW_FILTERS = """        <intent-filter>
-                  <action android:name="android.intent.action.VIEW" />
-                  <category android:name="android.intent.category.DEFAULT" />
-                  <category android:name="android.intent.category.BROWSABLE" />
-                  <data android:scheme="content" android:mimeType="application/pdf" />
-              </intent-filter>
-              <intent-filter>
-                  <action android:name="android.intent.action.VIEW" />
-                  <category android:name="android.intent.category.DEFAULT" />
-                  <category android:name="android.intent.category.BROWSABLE" />
-                  <data android:scheme="file" android:mimeType="application/pdf" />
-              </intent-filter>
-          """
-
-          # Inserisce prima del </activity> che chiude LauncherActivity (non il primo)
-          launcher_pos = content.find('android:name="LauncherActivity"')
-          if launcher_pos == -1:
-              print("ERRORE: LauncherActivity non trovata nel manifest!", file=sys.stderr)
-              sys.exit(1)
-          closing_pos = content.find('</activity>', launcher_pos)
-          if closing_pos == -1:
-              print("ERRORE: </activity> non trovata dopo LauncherActivity!", file=sys.stderr)
-              sys.exit(1)
-          content = content[:closing_pos] + NEW_FILTERS + content[closing_pos:]
-
-          with open(MANIFEST, "w", encoding="utf-8") as f:
-              f.write(content)
-
-          print("AndroidManifest.xml patchato correttamente.")
-          PYEOF
-
-      - name: Mostra AndroidManifest.xml (debug)
-        run: cat android-project/app/src/main/AndroidManifest.xml
-
-      # ── Build APK firmato con Gradle ──────────────────────────
-      - name: Build APK
+      # ── Build AAB + APK ───────────────────────────────────────
+      - name: Build AAB + APK
         working-directory: android-project
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -135,12 +32,12 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew bundleRelease assembleRelease \
-            "-Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android.keystore" \
+            "-Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/android-project/signingKey.keystore" \
             "-Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD" \
             "-Pandroid.injected.signing.key.alias=oksuite-pdf" \
             "-Pandroid.injected.signing.key.password=$KEY_PASSWORD"
 
-      # ── Carica AAB come artifact ──────────────────────────────
+      # ── Artifacts ─────────────────────────────────────────────
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
@@ -148,7 +45,6 @@ jobs:
           path: android-project/app/build/outputs/bundle/release/*.aab
           retention-days: 30
 
-      # ── Carica APK come artifact ──────────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
