@@ -21,13 +21,13 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 
-
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 
 public class LauncherActivity
         extends com.google.androidbrowserhelper.trusted.LauncherActivity {
-    
 
-    
+    private LocalPdfServer localPdfServer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,10 +44,19 @@ public class LauncherActivity
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (localPdfServer != null) {
+            localPdfServer.stop();
+            localPdfServer = null;
+        }
+    }
+
+    @Override
     protected Uri getLaunchingUrl() {
         Uri uri = super.getLaunchingUrl();
 
-        // Se l'intent è ACTION_VIEW con un PDF, passa l'URI al web tramite ?file=
+        // Se l'intent è ACTION_VIEW con un PDF, servi il file via localhost
         String action = getIntent().getAction();
         Uri dataUri = getIntent().getData();
 
@@ -60,12 +69,33 @@ public class LauncherActivity
                     || (dataUri.getLastPathSegment() != null
                         && dataUri.getLastPathSegment().toLowerCase().endsWith(".pdf"));
             if (isPdf) {
-                // Concede l'accesso al contenuto a Chrome
-                grantUriPermission("com.android.chrome",
-                        dataUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                uri = uri.buildUpon()
-                        .appendQueryParameter("file", dataUri.toString())
-                        .build();
+                try {
+                    // Legge i byte del PDF tramite ContentResolver
+                    InputStream is = getContentResolver().openInputStream(dataUri);
+                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                    byte[] chunk = new byte[8192];
+                    int bytesRead;
+                    while ((bytesRead = is.read(chunk)) != -1) {
+                        buffer.write(chunk, 0, bytesRead);
+                    }
+                    is.close();
+                    byte[] pdfBytes = buffer.toByteArray();
+
+                    // Avvia un server HTTP locale e passa l'URL localhost al web
+                    localPdfServer = new LocalPdfServer(pdfBytes);
+                    localPdfServer.start();
+                    int port = localPdfServer.getPort();
+                    uri = uri.buildUpon()
+                            .appendQueryParameter("file", "http://localhost:" + port + "/file.pdf")
+                            .build();
+                } catch (Exception e) {
+                    // Fallback: passa l'URI content:// direttamente (potrebbe non funzionare)
+                    grantUriPermission("com.android.chrome",
+                            dataUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    uri = uri.buildUpon()
+                            .appendQueryParameter("file", dataUri.toString())
+                            .build();
+                }
             }
         }
 
